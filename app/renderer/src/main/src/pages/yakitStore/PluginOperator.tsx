@@ -637,6 +637,7 @@ export interface AddToMenuActionFormProp {
     script: YakScript
     visible: boolean
     updateGroups?: () => any
+    setVisible: (b: boolean) => any
 }
 
 interface OptionsProps {
@@ -654,7 +655,7 @@ interface AddToMenuRequest {
 
 export const AddToMenuActionForm: React.FC<AddToMenuActionFormProp> = (props) => {
     const [form] = Form.useForm()
-    const {script, visible} = props
+    const {script, visible, setVisible} = props
     const updateGroups = props?.updateGroups ? props.updateGroups : () => {}
     const [patternMenu, setPatternMenu] = useState<"expert" | "new">("expert")
     const [menuData, setMenuData] = useState<MenuItemGroup[]>([])
@@ -731,6 +732,7 @@ export const AddToMenuActionForm: React.FC<AddToMenuActionFormProp> = (props) =>
                         .then(() => {
                             ipcRenderer.invoke("change-main-menu")
                             updateGroups()
+                            setVisible(false)
                             success("添加成功")
                         })
                         .catch((e: any) => {
@@ -785,11 +787,17 @@ export const PluginManagement: React.FC<PluginManagementProps> = React.memo<Plug
                 content={
                     <>
                         {script && (
-                            <AddToMenuActionForm visible={visibleAdd} script={script} updateGroups={updateGroups} />
+                            <AddToMenuActionForm
+                                visible={visibleAdd}
+                                setVisible={setVisibleAdd}
+                                script={script}
+                                updateGroups={updateGroups}
+                            />
                         )}
                     </>
                 }
                 trigger={["click"]}
+                visible={visibleAdd}
                 onVisibleChange={(visible) => {
                     setVisibleAdd(visible)
                 }}
