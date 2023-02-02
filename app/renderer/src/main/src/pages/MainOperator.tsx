@@ -77,6 +77,7 @@ import HeardMenu, {getScriptIcon} from "./layout/HeardMenu/HeardMenu"
 import {invalidCacheAndUserData} from "@/utils/InvalidCacheAndUserData";
 import {LocalGV} from "@/yakitGV"
 import { BaseConsole } from "../components/baseConsole/BaseConsole";
+import {HomeSvgIcon} from "@/assets/newIcon"
 
 const IsEnterprise: boolean = ENTERPRISE_STATUS.IS_ENTERPRISE_STATUS === getJuageEnvFile()
 
@@ -126,6 +127,8 @@ const singletonRoute: Route[] = [
     Route.PlugInAdminPage,
     // 获取引擎输出
     Route.AttachEngineCombinedOutput,
+    // 首页
+    Route.NewHome
 ]
 /** 不需要首页组件安全边距的页面 */
 const noPaddingPage = [
@@ -136,7 +139,8 @@ const noPaddingPage = [
     Route.ModManager,
     Route.ICMPSizeLog,
     Route.TCPPortLog,
-    Route.DNSLog
+    Route.DNSLog,
+    Route.NewHome
 ]
 
 export const defaultUserInfo: UserInfoProps = {
@@ -160,8 +164,6 @@ export interface MainProp {
     tlsGRPC?: boolean
     addr?: string
     onErrorConfirmed?: () => any
-    selectItemPage?:Route
-    setSelectItemPage?: (v:any)=> void
     isShowHome?:boolean
     setJudgeLicense?: (v:boolean)=> void
 }
@@ -344,7 +346,7 @@ export const SetUserInfo: React.FC<SetUserInfoProp> = React.memo((props) => {
 })
 
 const Main: React.FC<MainProp> = React.memo((props) => {
-    const {selectItemPage,setSelectItemPage,isShowHome,setJudgeLicense} = props
+    const {setJudgeLicense} = props
     const [loading, setLoading] = useState(false)
     const [menuItems, setMenuItems] = useState<MenuItemGroup[]>([])
     const [routeMenuData, setRouteMenuData] = useState<MenuDataProps[]>(DefaultRouteMenuData)
@@ -352,14 +354,14 @@ const Main: React.FC<MainProp> = React.memo((props) => {
     const [notification, setNotification] = useState("")
 
     const [pageCache, setPageCache, getPageCache] = useGetState<PageCache[]>([
-        // {
-        //     verbose: "MITM",
-        //     route: Route.HTTPHacker,
-        //     singleNode: ContentByRoute(Route.HTTPHacker),
-        //     multipleNode: []
-        // }
+        {
+            verbose: "首页",
+            route: Route.NewHome,
+            singleNode: ContentByRoute(Route.NewHome),
+            multipleNode: []
+        }
     ])
-    const [currentTabKey, setCurrentTabKey] = useState<Route | string>(Route.HTTPHacker)
+    const [currentTabKey, setCurrentTabKey] = useState<Route | string>(Route.NewHome)
 
     // 修改密码弹框
     const [passwordShow, setPasswordShow] = useState<boolean>(false)
@@ -404,12 +406,12 @@ const Main: React.FC<MainProp> = React.memo((props) => {
         }
     }, [])
 
-    useEffect(()=>{
-        if(selectItemPage&&setSelectItemPage){
-            goRouterPage(selectItemPage)
-            setSelectItemPage(undefined)
-        }
-    },[selectItemPage])
+    // useEffect(()=>{
+    //     if(selectItemPage&&setSelectItemPage){
+    //         goRouterPage(selectItemPage)
+    //         setSelectItemPage(undefined)
+    //     }
+    // },[selectItemPage])
 
     // yakit页面关闭是否二次确认提示
     const [winCloseFlag, setWinCloseFlag] = useState<boolean>(true)
@@ -1007,9 +1009,9 @@ const Main: React.FC<MainProp> = React.memo((props) => {
             // 区分新建对比页面还是别的页面请求对比的情况
             ipcRenderer.invoke("created-data-compare")
         })
-        if(getPageCache().length===0){
-            ipcRenderer.send("is-go-home", {isShow:true}) 
-        }
+        // if(getPageCache().length===0){
+            
+        // }
         return () => {
             ipcRenderer.removeAllListeners("main-container-add-compare")
         }
@@ -1288,7 +1290,7 @@ const Main: React.FC<MainProp> = React.memo((props) => {
         )
     }
     return (
-        <Layout className='yakit-main-layout' style={isShowHome?{display:"none"}:{}}>
+        <Layout className='yakit-main-layout'>
             <AutoSpin spinning={loading}>
                 {/* <Header className='main-laytou-header'>
                         <Row>
@@ -1655,7 +1657,7 @@ const Main: React.FC<MainProp> = React.memo((props) => {
                                                 <Tabs.TabPane
                                                     forceRender={true}
                                                     key={i.route}
-                                                    tab={i.verbose}
+                                                    tab={i.verbose!=="首页"?i.verbose:<><HomeSvgIcon style={{position:"relative",top:2}}/>{i.verbose}</>}
                                                     closeIcon={
                                                         <Space>
                                                             <Popover
@@ -1676,12 +1678,12 @@ const Main: React.FC<MainProp> = React.memo((props) => {
                                                                     </>
                                                                 }
                                                             >
-                                                                <EditOutlined className='main-container-cion'/>
+                                                                {i.verbose!=="首页"&&<EditOutlined className='main-container-cion'/>}
                                                             </Popover>
-                                                            <CloseOutlined
+                                                            {i.verbose!=="首页"&&<CloseOutlined
                                                                 className='main-container-cion'
                                                                 onClick={() => removePage(`${i.route}`)}
-                                                            />
+                                                            />}
                                                         </Space>
                                                     }
                                                 >

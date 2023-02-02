@@ -48,7 +48,6 @@ import LicenseAdminPage from "@/pages/loginOperationMenu/LicenseAdminPage"
 import PlugInAdminPage from "@/pages/loginOperationMenu/PlugInAdminPage"
 import {TrustListPage} from "@/pages/loginOperationMenu/TrustListPage"
 
-
 import {
     MenuDomainAssetsIcon,
     MenuHTTPHistoryIcon,
@@ -82,7 +81,7 @@ import {ProjectPage} from "@/pages/projects/ProjectPage";
 
 const HTTPHacker = React.lazy(() => import("../pages/hacker/httpHacker"))
 const CodecPage = React.lazy(() => import("../pages/codec/CodecPage"))
-
+const NewHome = React.lazy(() => import("@/pages/newHome/NewHome"))
 export enum Route {
     MITM = "mitm",
     YakScript = "yakScript",
@@ -160,6 +159,9 @@ export enum Route {
     PlugInAdminPage = "plug-in-admin-page", // 插件权限管理
     // 获取标准输出流
     AttachEngineCombinedOutput = "attach-engine-combined-output",
+
+    // 首页
+    NewHome = "new-home"
 }
 
 
@@ -301,6 +303,8 @@ export const ContentByRoute = (r: Route | string, yakScriptId?: number, params?:
                     shareContent={params?.shareContent}
                 />
             )
+        case Route.NewHome:
+            return <NewHome/>
         case Route.WebsocketFuzzer:
             return <WebsocketFuzzer tls={params?.wsTls} request={params?.wsRequest} />
         case Route.Codec:
@@ -552,6 +556,13 @@ export const DefaultRouteMenuData: MenuDataProps[] = [
         id: "15",
         key: Route.PlugInAdminPage,
         label: "插件权限",
+        disabled: true,
+        hidden: true
+    },
+    {
+        id: "16",
+        key: Route.NewHome,
+        label: "首页",
         disabled: true,
         hidden: true
     }
