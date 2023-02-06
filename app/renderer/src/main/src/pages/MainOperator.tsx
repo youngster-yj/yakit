@@ -1668,7 +1668,7 @@ const Main: React.FC<MainProp> = React.memo((props) => {
                                                 <Tabs.TabPane
                                                     forceRender={true}
                                                     key={i.route}
-                                                    tab={i.verbose!=="首页"?i.verbose:<><HomeSvgIcon style={{position:"relative",top:2}}/>{i.verbose}</>}
+                                                    tab={i.verbose!=="首页"?i.verbose:<><HomeSvgIcon className="main-home-svg-icon" style={currentTabKey===Route.NewHome?{color:"#F28B44"}:{}}/>{i.verbose}</>}
                                                     closeIcon={
                                                         <Space>
                                                             <Popover
