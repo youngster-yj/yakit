@@ -541,8 +541,10 @@ const Main: React.FC<MainProp> = React.memo((props) => {
                 node: ReactNode
                 isRecord?: boolean
                 hideAdd?: boolean
-            }
+            },
+            noShowTab?:boolean
         ) => {
+            const isShowTab = noShowTab||false
             const filterPage = pageCache.filter((i) => i.route === route)
             const filterPageLength = filterPage.length
 
@@ -605,7 +607,8 @@ const Main: React.FC<MainProp> = React.memo((props) => {
                             hideAdd: nodeParams?.hideAdd
                         }
                     ])
-                    setCurrentTabKey(route)
+                    if(!isShowTab)setCurrentTabKey(route)
+                    
                     if (nodeParams && !!nodeParams.isRecord) addFuzzerList(nodeParams?.time || time)
                 }
             }
@@ -894,8 +897,8 @@ const Main: React.FC<MainProp> = React.memo((props) => {
                         fuzzerParams: item,
                         system: system,
                         order: time
-                    })
-                })
+                    }),
+                },true)
             }
         }).catch(e => {
             console.info(e)
