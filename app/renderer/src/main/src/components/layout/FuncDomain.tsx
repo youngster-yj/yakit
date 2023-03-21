@@ -2,8 +2,8 @@ import React, {useEffect, useMemo, useRef, useState} from "react"
 import {Badge, Modal, Tooltip} from "antd"
 import {
     BellSvgIcon,
-    HelpSvgIcon,
     RiskStateSvgIcon,
+    RocketSvgIcon,
     ScreensHotSvgIcon,
     UISettingSvgIcon,
     UnLoginSvgIcon,
@@ -16,10 +16,10 @@ import {YakitEllipsis} from "../basics/YakitEllipsis"
 import {useMemoizedFn} from "ahooks"
 import {showDrawer, showModal} from "@/utils/showModal"
 import {LoadYakitPluginForm} from "@/pages/yakitStore/YakitStorePage"
-import {info, success} from "@/utils/notification"
+import {failed, info, success} from "@/utils/notification"
 import {ConfigPrivateDomain} from "../ConfigPrivateDomain/ConfigPrivateDomain"
 import {ConfigGlobalReverse} from "@/utils/basic"
-import {YaklangEngineMode} from "@/yakitGVDefine"
+import {YakitSettingCallbackType, YaklangEngineMode} from "@/yakitGVDefine"
 import {showConfigSystemProxyForm} from "@/utils/ConfigSystemProxy"
 import {showConfigEngineProxyForm} from "@/utils/ConfigEngineProxy"
 import {showConfigYaklangEnvironment} from "@/utils/ConfigYaklangEnvironment"
@@ -31,6 +31,7 @@ import {loginOut} from "@/utils/login"
 import {Route} from "@/routes/routeSpec"
 import {UserPlatformType} from "@/pages/globalVariable"
 import SetPassword from "@/pages/SetPassword"
+import SelectUpload from "@/pages/SelectUpload"
 import {QueryGeneralResponse} from "@/pages/invoker/schema"
 import {Risk} from "@/pages/risks/schema"
 import {RiskDetails, RiskTable} from "@/pages/risks/RiskTable"
@@ -40,11 +41,24 @@ import {YakitMenu} from "../yakitUI/YakitMenu/YakitMenu"
 import {showConfigMenuItems} from "@/utils/ConfigMenuItems"
 import {showDevTool} from "@/utils/envfile"
 import {invalidCacheAndUserData} from "@/utils/InvalidCacheAndUserData"
+import {YakitSwitch} from "../yakitUI/YakitSwitch/YakitSwitch"
+import {CodeGV, LocalGV} from "@/yakitGV"
+import {getLocalValue, setLocalValue} from "@/utils/kv"
+import {showPcapPermission} from "@/utils/ConfigPcapPermission"
+import {migrateLegacyDatabase} from "@/utils/ConfigMigrateLegacyDatabase"
+import {CVEDownloader} from "@/pages/cve/Downloader"
+import {GithubSvgIcon, PencilAltIcon} from "@/assets/newIcon"
+import {YakitModal} from "../yakitUI/YakitModal/YakitModal"
+import {YakitInput} from "../yakitUI/YakitInput/YakitInput"
+import {ENTERPRISE_STATUS, getJuageEnvFile} from "@/utils/envfile"
+import {NetWorkApi} from "@/services/fetch"
+import {API} from "@/services/swagger/resposeType"
 
 import classnames from "classnames"
 import styles from "./funcDomain.module.scss"
 import yakitImg from "../../assets/yakit.jpg"
-import {showPcapPermission} from "@/utils/ConfigPcapPermission";
+
+const isEnterprise = ENTERPRISE_STATUS.IS_ENTERPRISE_STATUS === getJuageEnvFile()
 
 const {ipcRenderer} = window.require("electron")
 
@@ -54,10 +68,11 @@ export interface FuncDomainProp {
     engineMode: YaklangEngineMode
     isRemoteMode: boolean
     onEngineModeChange: (type: YaklangEngineMode) => any
+    typeCallback: (type: YakitSettingCallbackType) => any
 }
 
 export const FuncDomain: React.FC<FuncDomainProp> = React.memo((props) => {
-    const {isEngineLink, isReverse = false, engineMode, isRemoteMode, onEngineModeChange} = props
+    const {isEngineLink, isReverse = false, engineMode, isRemoteMode, onEngineModeChange, typeCallback} = props
 
     /** 登录用户信息 */
     const {userInfo, setStoreUserInfo} = useStore()
@@ -70,9 +85,11 @@ export const FuncDomain: React.FC<FuncDomainProp> = React.memo((props) => {
     ])
     /** 修改密码弹框 */
     const [passwordShow, setPasswordShow] = useState<boolean>(false)
+    /** 上传数据弹框 */
+    const [uploadModalShow, setUploadModalShow] = useState<boolean>(false)
 
     useEffect(() => {
-        const SetUserInfoModule = () => <SetUserInfo userInfo={userInfo} setStoreUserInfo={setStoreUserInfo}/>
+        const SetUserInfoModule = () => <SetUserInfo userInfo={userInfo} setStoreUserInfo={setStoreUserInfo} />
         // 非企业管理员登录
         if (userInfo.role === "admin" && userInfo.platform !== "company") {
             setUserMenu([
@@ -102,6 +119,7 @@ export const FuncDomain: React.FC<FuncDomainProp> = React.memo((props) => {
         else if (userInfo.role === "admin" && userInfo.platform === "company") {
             setUserMenu([
                 {key: "user-info", title: "用户信息", render: () => SetUserInfoModule()},
+                {key: "upload-data", title: "上传数据"},
                 {key: "role-admin", title: "角色管理"},
                 {key: "account-admin", title: "用户管理"},
                 {key: "set-password", title: "修改密码"},
@@ -113,6 +131,7 @@ export const FuncDomain: React.FC<FuncDomainProp> = React.memo((props) => {
         else if (userInfo.role !== "admin" && userInfo.platform === "company") {
             setUserMenu([
                 {key: "user-info", title: "用户信息", render: () => SetUserInfoModule()},
+                {key: "upload-data", title: "上传数据"},
                 {key: "set-password", title: "修改密码"},
                 {key: "sign-out", title: "退出登录"}
             ])
@@ -132,25 +151,40 @@ export const FuncDomain: React.FC<FuncDomainProp> = React.memo((props) => {
     return (
         <div className={styles["func-domain-wrapper"]} onDoubleClick={(e) => e.stopPropagation()}>
             <div className={classnames(styles["func-domain-body"], {[styles["func-domain-reverse-body"]]: isReverse})}>
-                {showDevTool() && <UIDevTool/>}
-                {/* <div
-                    className={styles["ui-op-btn-wrapper"]}
-                    onClick={() => ipcRenderer.invoke("open-url", "https://www.yaklang.com/docs/intro/")}
-                >
-                    <Tooltip placement='bottom' title='官方网站'>
-                        <HelpSvgIcon style={{fontSize: 20}} className={styles["icon-style"]} />
-                    </Tooltip>
-                </div> */}
+                {showDevTool() && <UIDevTool />}
+
                 {/* <div className={styles["ui-op-btn-wrapper"]} onClick={() => ipcRenderer.invoke("activate-screenshot")}>
                     <ScreensHotSvgIcon className={styles["icon-style"]} />
                 </div> */}
+
+                <div
+                    className={styles["ui-op-btn-wrapper"]}
+                    onClick={() => {
+                        getLocalValue("SHOW_BASE_CONSOLE").then((val: boolean) => {
+                            if (!val) {
+                                typeCallback("console")
+                            }
+                        })
+                    }}
+                >
+                    <div className={styles["op-btn-body"]}>
+                        <Tooltip placement='bottom' title='引擎Console'>
+                            <RocketSvgIcon style={{fontSize: 20}} className={styles["icon-style"]} />
+                        </Tooltip>
+                    </div>
+                </div>
+
                 <div className={styles["short-divider-wrapper"]}>
                     <div className={styles["divider-style"]}></div>
                 </div>
                 <div className={styles["state-setting-wrapper"]}>
-                    <UIOpRisk isEngineLink={isEngineLink}/>
-                    <UIOpNotice isEngineLink={isEngineLink} isRemoteMode={isRemoteMode}/>
-                    <UIOpSetting engineMode={engineMode} onEngineModeChange={onEngineModeChange}/>
+                    <UIOpRisk isEngineLink={isEngineLink} />
+                    <UIOpNotice isEngineLink={isEngineLink} isRemoteMode={isRemoteMode} />
+                    <UIOpSetting
+                        engineMode={engineMode}
+                        onEngineModeChange={onEngineModeChange}
+                        typeCallback={typeCallback}
+                    />
                 </div>
                 <div className={styles["divider-wrapper"]}></div>
                 <div className={styles["user-wrapper"]}>
@@ -175,6 +209,7 @@ export const FuncDomain: React.FC<FuncDomainProp> = React.memo((props) => {
                                         openMenu(key)
                                     }
                                     if (key === "set-password") setPasswordShow(true)
+                                    if (key === "upload-data") setUploadModalShow(true)
                                     if (key === "role-admin") {
                                         const key = Route.RoleAdminPage
                                         openMenu(key)
@@ -205,13 +240,13 @@ export const FuncDomain: React.FC<FuncDomainProp> = React.memo((props) => {
                         </div>
                     ) : (
                         <div className={styles["user-show"]} onClick={() => setLoginShow(true)}>
-                            <UnLoginSvgIcon/>
+                            <UnLoginSvgIcon />
                         </div>
                     )}
                 </div>
             </div>
 
-            {loginShow && <Login visible={loginShow} onCancel={() => setLoginShow(false)}/>}
+            {loginShow && <Login visible={loginShow} onCancel={() => setLoginShow(false)} />}
             <Modal
                 visible={passwordShow}
                 title={"修改密码"}
@@ -222,7 +257,20 @@ export const FuncDomain: React.FC<FuncDomainProp> = React.memo((props) => {
                 onCancel={() => setPasswordShow(false)}
                 footer={null}
             >
-                <SetPassword onCancel={() => setPasswordShow(false)} userInfo={userInfo}/>
+                <SetPassword onCancel={() => setPasswordShow(false)} userInfo={userInfo} />
+            </Modal>
+
+            <Modal
+                visible={uploadModalShow}
+                title={"上传数据"}
+                destroyOnClose={true}
+                maskClosable={false}
+                bodyStyle={{padding: "10px 24px 24px 24px"}}
+                width={520}
+                onCancel={() => setUploadModalShow(false)}
+                footer={null}
+            >
+                <SelectUpload onCancel={() => setUploadModalShow(false)} />
             </Modal>
         </div>
     )
@@ -233,22 +281,34 @@ interface UIOpSettingProp {
     engineMode: YaklangEngineMode
     /** yaklang引擎切换启动模式 */
     onEngineModeChange: (type: YaklangEngineMode) => any
+    typeCallback: (type: YakitSettingCallbackType) => any
 }
 
 const UIOpSetting: React.FC<UIOpSettingProp> = React.memo((props) => {
-    const {engineMode, onEngineModeChange} = props
+    const {engineMode, onEngineModeChange, typeCallback} = props
 
     const [show, setShow] = useState<boolean>(false)
 
     const menuSelect = useMemoizedFn((type: string) => {
         switch (type) {
+            case "cve-database-download":
+                showDrawer({
+                    title: "下载/更新 CVE 漏洞库基础信息",
+                    width: 800,
+                    content: (
+                        <div style={{width: 780}}>
+                            <CVEDownloader />
+                        </div>
+                    )
+                })
+                return
             case "external":
                 showModal({
                     title: "更新插件源",
                     width: 800,
                     content: (
-                        <div style={{width: 800}}>
-                            <LoadYakitPluginForm onFinished={() => info("更新进程执行完毕")}/>
+                        <div style={{width: 780}}>
+                            <LoadYakitPluginForm onFinished={() => info("更新进程执行完毕")} />
                         </div>
                     )
                 })
@@ -256,7 +316,7 @@ const UIOpSetting: React.FC<UIOpSettingProp> = React.memo((props) => {
             case "store":
                 const m = showModal({
                     title: "配置私有域",
-                    content: <ConfigPrivateDomain onClose={() => m.destroy()}/>
+                    content: <ConfigPrivateDomain onClose={() => m.destroy()} />
                 })
                 return m
             case "reverse":
@@ -265,7 +325,7 @@ const UIOpSetting: React.FC<UIOpSettingProp> = React.memo((props) => {
                     width: 800,
                     content: (
                         <div style={{width: 800}}>
-                            <ConfigGlobalReverse/>
+                            <ConfigGlobalReverse />
                         </div>
                     )
                 })
@@ -301,6 +361,17 @@ const UIOpSetting: React.FC<UIOpSettingProp> = React.memo((props) => {
             case "pcapfix":
                 showPcapPermission()
                 return
+            case "adminMode":
+                typeCallback("adminMode")
+                return
+            case "migrateLegacy":
+                migrateLegacyDatabase()
+                return
+            case "changeProject":
+            case "encryptionProject":
+            case "plaintextProject":
+                typeCallback(type)
+                return
             default:
                 return
         }
@@ -312,14 +383,24 @@ const UIOpSetting: React.FC<UIOpSettingProp> = React.memo((props) => {
             data={[
                 {
                     key: "pcapfix",
-                    label: "网卡权限修复",
+                    label: "网卡权限修复"
+                },
+                {
+                    key: "project",
+                    label: "项目管理",
+                    children: [
+                        {label: "切换项目", key: "changeProject"},
+                        {label: "加密导出", key: "encryptionProject"},
+                        {label: "明文导出", key: "plaintextProject"}
+                    ]
                 },
                 {
                     key: "plugin",
                     label: "配置插件源",
                     children: [
-                        {label: "外部", key: "external"},
-                        {label: "插件商店", key: "store"}
+                        {label: "插件商店", key: "store"},
+                        {label: "CVE 数据库", key: "cve-database-download"},
+                        {label: "外部", key: "external"}
                     ]
                 },
                 {
@@ -343,7 +424,7 @@ const UIOpSetting: React.FC<UIOpSettingProp> = React.memo((props) => {
                     label: "切换连接模式",
                     children: [
                         {label: "本地", key: "local"},
-                        {label: "远程", key: "remote"},
+                        {label: "远程", key: "remote"}
                     ]
                 },
                 {
@@ -358,6 +439,14 @@ const UIOpSetting: React.FC<UIOpSettingProp> = React.memo((props) => {
                     key: "system-manager",
                     label: "进程与缓存管理",
                     children: [{key: "invalidCache", label: "删除缓存数据"}]
+                },
+                {
+                    key: "otherMode",
+                    label: "其他操作",
+                    children: [
+                        {label: "管理员模式", key: "adminMode"},
+                        {label: "旧版本迁移", key: "migrateLegacy"}
+                    ]
                 }
             ]}
             onClick={({key}) => menuSelect(key)}
@@ -372,7 +461,9 @@ const UIOpSetting: React.FC<UIOpSettingProp> = React.memo((props) => {
             onVisibleChange={(visible) => setShow(visible)}
         >
             <div className={styles["ui-op-btn-wrapper"]}>
-                <UISettingSvgIcon className={show ? styles["icon-hover-style"] : styles["icon-style"]}/>
+                <div className={classnames(styles["op-btn-body"], {[styles["op-btn-body-hover"]]: show})}>
+                    <UISettingSvgIcon className={show ? styles["icon-hover-style"] : styles["icon-style"]} />
+                </div>
             </div>
         </YakitPopover>
     )
@@ -427,7 +518,9 @@ const UIDevTool: React.FC = React.memo(() => {
             onVisibleChange={(visible) => setShow(visible)}
         >
             <div className={styles["ui-op-btn-wrapper"]}>
-                <UISettingSvgIcon className={show ? styles["icon-hover-style"] : styles["icon-style"]}/>
+                <div className={classnames(styles["op-btn-body"], {[styles["op-btn-body-hover"]]: show})}>
+                    <UISettingSvgIcon className={show ? styles["icon-hover-style"] : styles["icon-style"]} />
+                </div>
             </div>
         </YakitPopover>
     )
@@ -436,16 +529,40 @@ const UIDevTool: React.FC = React.memo(() => {
 interface UIOpUpdateProps {
     version: string
     lastVersion: string
-    isUpdateWait: boolean
+    localVersion?: string
+    isUpdateWait?: boolean
     isRemoteMode?: boolean
     onDownload: (type: "yakit" | "yaklang") => any
+    isSimple?: boolean
+    isEnterprise: boolean
+    role?: string | null
+    updateContent?: string
+    onUpdateEdit?: (type: "yakit" | "yaklang", isEnterprise?: boolean) => any
 }
 
 /** @name Yakit版本 */
 const UIOpUpdateYakit: React.FC<UIOpUpdateProps> = React.memo((props) => {
-    const {version, lastVersion, isUpdateWait, onDownload} = props
+    const {
+        version,
+        lastVersion,
+        isUpdateWait,
+        onDownload,
+        isSimple = false,
+        isEnterprise,
+        role,
+        updateContent = "",
+        onUpdateEdit
+    } = props
 
-    const isUpdate = lastVersion !== "" && lastVersion !== version
+    const isUpdate = isSimple ? false : lastVersion !== "" && lastVersion !== version
+
+    const content: string[] = useMemo(() => {
+        if (updateContent) {
+            const strs = updateContent.split("\n")
+            return strs
+        }
+        return []
+    }, [updateContent])
 
     return (
         <div
@@ -456,57 +573,102 @@ const UIOpUpdateYakit: React.FC<UIOpUpdateProps> = React.memo((props) => {
             <div className={styles["update-header-wrapper"]}>
                 <div className={styles["header-info"]}>
                     <div className={styles["update-icon"]}>
-                        <YakitWhiteSvgIcon/>
+                        <YakitWhiteSvgIcon />
                     </div>
                     {/* 等使用更新内容时，下面"当前版本"-div需要被删除 */}
                     <div>
-                        <div className={styles["update-title"]}>{`Yakit ${isUpdate ? lastVersion : version}`}</div>
-                        <div className={styles["update-time"]}>{`当前版本: ${version}`}</div>
+                        <div className={isSimple ? styles["update-simple-title"] : styles["update-title"]}>{`${
+                            isEnterprise ? "企业版" : "社区版"
+                        } Yakit ${isUpdate ? lastVersion : version}`}</div>
+                        {!isSimple && <div className={styles["update-time"]}>{`当前版本: ${version}`}</div>}
                         {/* <div className={styles["update-time"]}>2022-10-01</div> */}
                     </div>
                 </div>
 
                 <div className={styles["header-btn"]}>
-                    {isUpdateWait ? (
+                    {isSimple ? (
+                        <></>
+                    ) : isUpdateWait ? (
                         <YakitButton onClick={() => ipcRenderer.invoke("open-yakit-or-yaklang")}>{`安装 `}</YakitButton>
                     ) : isUpdate ? (
                         <div className={styles["update-btn"]} onClick={() => onDownload("yakit")}>
-                            <UpdateSvgIcon style={{marginRight: 4}}/>
+                            <UpdateSvgIcon style={{marginRight: 4}} />
                             立即下载
                         </div>
                     ) : (
                         "已是最新"
                     )}
+                    {role === "superAdmin" && (
+                        <div
+                            className={styles["edit-func"]}
+                            onClick={() => {
+                                if (onUpdateEdit) onUpdateEdit("yakit", isEnterprise)
+                            }}
+                        >
+                            <PencilAltIcon className={styles["edit-icon"]} />
+                        </div>
+                    )}
                 </div>
             </div>
 
-            {/* <div className={styles["update-content-wrapper"]}>
-                <div className={styles["update-content"]}>
-                    1. 修复前端 Web Fuzzer 数据过多的时候纯前端卡顿问题 <br />
-                    2. 修复 HTTP History Flow 筛选与屏蔽的 BUG <br />
-                    3. 新增 Java Hack Yso GUI Dump 功能（需配合1.1.3-sp5引...
+            <div className={styles["update-content-wrapper"]}>
+                <div
+                    className={classnames({
+                        [styles["update-content"]]: role !== "superAdmin",
+                        [styles["update-admin-content"]]: role === "superAdmin"
+                    })}
+                >
+                    {content.length === 0 ? (
+                        <div className={role === "superAdmin" ? styles["empty-content"] : ""}>管理员未编辑更新通知</div>
+                    ) : (
+                        content.map((item, index) => {
+                            return (
+                                <div key={item} className={classnames({[styles["paragraph-spacing"]]: index !== 0})}>
+                                    {item}
+                                </div>
+                            )
+                        })
+                    )}
                 </div>
-                <div className={styles["current-version"]}>当前版本：Yakit 1.1.3-sq1</div>
-            </div> */}
+                {/* <div className={styles["current-version"]}>当前版本：Yakit 1.1.3-sq1</div> */}
+            </div>
         </div>
     )
 })
 /** @name Yaklang引擎版本 */
 const UIOpUpdateYaklang: React.FC<UIOpUpdateProps> = React.memo((props) => {
-    const {version, lastVersion, isUpdateWait, isRemoteMode = false, onDownload} = props
+    const {
+        version,
+        lastVersion,
+        localVersion = "",
+        isRemoteMode = false,
+        onDownload,
+        role,
+        updateContent = "",
+        onUpdateEdit
+    } = props
 
-    const isUpdate = lastVersion !== "" && lastVersion !== version
+    const isUpdate = lastVersion !== "" && lastVersion !== version && localVersion !== lastVersion
+    const isKillEngine = localVersion && localVersion !== version && localVersion === lastVersion
+
+    const content: string[] = useMemo(() => {
+        if (updateContent) {
+            const strs = updateContent.split("\n")
+            return strs
+        }
+        return []
+    }, [updateContent])
 
     return (
         <div
             className={classnames(styles["version-update-wrapper"], {
-                [styles["version-has-update"]]: !isRemoteMode && isUpdate && !isUpdateWait
+                [styles["version-has-update"]]: !isRemoteMode && (isUpdate || isKillEngine)
             })}
         >
             <div className={styles["update-header-wrapper"]}>
                 <div className={styles["header-info"]}>
                     <div className={styles["update-icon"]}>
-                        <YaklangSvgIcon/>
+                        <YaklangSvgIcon />
                     </div>
                     {/* 等使用更新内容时，下面"当前版本"-div需要被删除 */}
                     <div>
@@ -517,38 +679,58 @@ const UIOpUpdateYaklang: React.FC<UIOpUpdateProps> = React.memo((props) => {
                 </div>
 
                 <div className={styles["header-btn"]}>
-                    {!isRemoteMode && isUpdateWait && (
-                        <YakitButton
-                            onClick={() => ipcRenderer.invoke("update-yaklang-reconnect", lastVersion)}
-                        >{`更新 `}</YakitButton>
-                    )}
-                    {!isRemoteMode && !isUpdateWait && isUpdate && (
+                    {!isRemoteMode && isUpdate && (
                         <div className={styles["update-btn"]} onClick={() => onDownload("yaklang")}>
-                            <UpdateSvgIcon style={{marginRight: 4}}/>
+                            <UpdateSvgIcon style={{marginRight: 4}} />
                             立即更新
                         </div>
                     )}
-                    {!isUpdate && "已是最新"}
+                    {!isRemoteMode && isKillEngine && (
+                        <YakitButton
+                            onClick={() => ipcRenderer.invoke("kill-old-engine-process")}
+                        >{`更新 `}</YakitButton>
+                    )}
+                    {!isUpdate && !isKillEngine && "已是最新"}
                     {isRemoteMode && isUpdate && "远程连接无法更新"}
+                    {!isRemoteMode && role === "superAdmin" && (
+                        <div
+                            className={styles["edit-func"]}
+                            onClick={() => {
+                                if (onUpdateEdit) onUpdateEdit("yaklang", isEnterprise)
+                            }}
+                        >
+                            <PencilAltIcon className={styles["edit-icon"]} />
+                        </div>
+                    )}
                 </div>
             </div>
 
-            {/* <div className={styles["update-content-wrapper"]}>
-                <div className={styles["update-content"]}>
-                    1. 修复了 GetCommonParams 对 Post Data 的不当处理
-                    <br />
-                    2. 允许劫持并修改 Websocket 握手包
-                    <br />
-                    3. Fuzz tag 别名，randstr -{">"} rs...
+            <div className={styles["update-content-wrapper"]}>
+                <div
+                    className={classnames({
+                        [styles["update-content"]]: role !== "superAdmin",
+                        [styles["update-admin-content"]]: role === "superAdmin"
+                    })}
+                >
+                    {content.length === 0 ? (
+                        <div className={role === "superAdmin" ? styles["empty-content"] : ""}>管理员未编辑更新通知</div>
+                    ) : (
+                        content.map((item, index) => {
+                            return (
+                                <div key={item} className={classnames({[styles["paragraph-spacing"]]: index !== 0})}>
+                                    {item}
+                                </div>
+                            )
+                        })
+                    )}
                 </div>
-                <div className={styles["current-version"]}>当前版本：Yaklang 1.1.3-sp3-5</div>
-            </div> */}
+                {/* <div className={styles["current-version"]}>当前版本：Yaklang 1.1.3-sp3-5</div> */}
+            </div>
         </div>
     )
 })
 
-interface UIOpLetterProps {
-}
+interface UIOpLetterProps {}
 
 /** @name 插件商店消息及系统消息 */
 const UIOpLetter: React.FC<UIOpLetterProps> = React.memo((props) => {
@@ -556,7 +738,7 @@ const UIOpLetter: React.FC<UIOpLetterProps> = React.memo((props) => {
         return (
             <div key={type} className={styles["letter-info-wrapper"]}>
                 <div className={styles["info-header"]}>
-                    <BellSvgIcon/>
+                    <BellSvgIcon />
                 </div>
                 {type === "follow" && (
                     <div className={styles["info-content"]}>
@@ -624,9 +806,23 @@ interface UIOpNoticeProp {
     isEngineLink: boolean
     isRemoteMode: boolean
 }
+export interface UpdateContentProp {
+    version: string
+    content: string
+}
+export interface FetchUpdateContentProp {
+    source: "company" | "community"
+    type: "yakit" | "yaklang"
+}
+interface SetUpdateContentProp extends FetchUpdateContentProp {
+    updateContent: string
+}
 
 const UIOpNotice: React.FC<UIOpNoticeProp> = React.memo((props) => {
     const {isEngineLink, isRemoteMode} = props
+
+    const {userInfo} = useStore()
+
     const [show, setShow] = useState<boolean>(false)
     const [type, setType] = useState<"letter" | "update">("update")
 
@@ -638,27 +834,103 @@ const UIOpNotice: React.FC<UIOpNoticeProp> = React.memo((props) => {
     /** Yaklang引擎版本号 */
     const [yaklangVersion, setYaklangVersion] = useState<string>("dev")
     const [yaklangLastVersion, setYaklangLastVersion] = useState<string>("")
+    const [yaklangLocalVersion, setYaklangLocalVersion] = useState<string>("")
     const yaklangTime = useRef<any>(null)
+
+    const [companyYakitContent, setCompanyYakitContent] = useState<UpdateContentProp>({version: "", content: ""})
+    const [communityYakitContent, setCommunityYakitContent] = useState<UpdateContentProp>({version: "", content: ""})
+    const [communityYaklangContent, setCommunityYaklangContent] = useState<UpdateContentProp>({
+        version: "",
+        content: ""
+    })
+    const companyYakit: string = useMemo(() => {
+        if (!yakitLastVersion) return ""
+        if (yakitLastVersion !== companyYakitContent.version) return ""
+        if (yakitLastVersion === companyYakitContent.version) return companyYakitContent.content
+        return ""
+    }, [yakitLastVersion, companyYakitContent])
+    const communityYakit: string = useMemo(() => {
+        if (!yakitLastVersion) return ""
+        if (yakitLastVersion !== communityYakitContent.version) return ""
+        if (yakitLastVersion === communityYakitContent.version) return communityYakitContent.content
+        return ""
+    }, [yakitLastVersion, communityYakitContent])
+    const communityYaklang: string = useMemo(() => {
+        if (!yaklangLastVersion) return ""
+        if (yaklangLastVersion !== communityYaklangContent.version) return ""
+        if (yaklangLastVersion === communityYaklangContent.version) return communityYaklangContent.content
+        return ""
+    }, [yaklangLastVersion, communityYaklangContent])
+
+    /** 是否启动检测更新 */
+    const [isCheck, setIsCheck] = useState<boolean>(true)
 
     /** 获取最新Yakit版本号 */
     const fetchYakitLastVersion = useMemoizedFn(() => {
+        /** 获取yakit最新版本号 */
         ipcRenderer
             .invoke("fetch-latest-yakit-version")
             .then((data: string) => {
                 if (yakitVersion !== data) setYakitLastVersion(data)
             })
-            .catch(() => {
+            .catch(() => {})
+        /** 获取社区版yakit更新内容 */
+        NetWorkApi<FetchUpdateContentProp, any>({
+            diyHome: "https://www.yaklang.com",
+            method: "get",
+            url: "yak/versions",
+            params: {type: "yakit", source: "community"}
+        })
+            .then((res: any) => {
+                if (!res) return
+                try {
+                    const data: UpdateContentProp = JSON.parse(res)
+                    if (data.content === communityYakitContent.content) return
+                    setCommunityYakitContent({...data})
+                } catch (error) {}
             })
+            .catch((err) => {})
+        /** 获取企业版yakit更新内容 */
+        NetWorkApi<FetchUpdateContentProp, any>({
+            diyHome: "https://www.yaklang.com",
+            method: "get",
+            url: "yak/versions",
+            params: {type: "yakit", source: "company"}
+        })
+            .then((res: any) => {
+                if (!res) return
+                try {
+                    const data: UpdateContentProp = JSON.parse(res)
+                    if (data.content === companyYakitContent.content) return
+                    setCompanyYakitContent({...data})
+                } catch (error) {}
+            })
+            .catch((err) => {})
     })
-    /** 获取最新Yaklang版本号 */
+    /** 获取最新Yaklang版本号和本地版本号 */
     const fetchYaklangLastVersion = useMemoizedFn(() => {
-        ipcRenderer
-            .invoke("fetch-latest-yaklang-version")
-            .then((data: string) => {
-                if (yaklangVersion !== data) setYaklangLastVersion(data)
+        ipcRenderer.invoke("fetch-latest-yaklang-version").then((data: string) => {
+            if (yaklangVersion !== data) setYaklangLastVersion(data)
+        })
+        ipcRenderer.invoke("get-current-yak").then((data: string) => {
+            setYaklangLocalVersion(data)
+        })
+        /** 获取社区版yaklang更新内容 */
+        NetWorkApi<FetchUpdateContentProp, any>({
+            diyHome: "https://www.yaklang.com",
+            method: "get",
+            url: "yak/versions",
+            params: {type: "yaklang", source: "community"}
+        })
+            .then((res: any) => {
+                if (!res) return
+                try {
+                    const data: UpdateContentProp = JSON.parse(res)
+                    if (data.content === communityYaklangContent.content) return
+                    setCommunityYaklangContent({...data})
+                } catch (error) {}
             })
-            .catch(() => {
-            })
+            .catch((err) => {})
     })
 
     /** 接收本地Yaklang引擎版本号信息 */
@@ -676,6 +948,9 @@ const UIOpNotice: React.FC<UIOpNoticeProp> = React.memo((props) => {
 
     useEffect(() => {
         if (isEngineLink) {
+            getLocalValue(LocalGV.NoAutobootLatestVersionCheck).then((val: boolean) => {
+                setIsCheck(val)
+            })
             /** 获取本地Yakit版本号，启动获取最新Yakit版本的定时器 */
             ipcRenderer.invoke("fetch-yakit-version").then((v: string) => setYakitVersion(`v${v}`))
             if (yakitTime.current) clearInterval(yakitTime.current)
@@ -708,19 +983,57 @@ const UIOpNotice: React.FC<UIOpNoticeProp> = React.memo((props) => {
         ipcRenderer.invoke("receive-download-yaklang-or-yakit", type)
     })
 
-    const [isYaklangUpdateWait, setIsYaklangUpdateWait] = useState<boolean>(false)
     const [isYakitUpdateWait, setIsYakitUpdateWait] = useState<boolean>(false)
     /** 监听下载 yaklang 或 yakit 成功后是否稍后安装 */
     useEffect(() => {
-        ipcRenderer.on("download-update-wait-callback", (e: any, type: "yaklang" | "yakit") => {
+        ipcRenderer.on("download-update-wait-callback", (e: any, type: "yakit") => {
             if (type === "yakit") setIsYakitUpdateWait(true)
-            if (type === "yaklang") setIsYaklangUpdateWait(true)
         })
 
         return () => {
             ipcRenderer.removeAllListeners("download-update-wait-callback")
         }
     }, [])
+
+    const [editLoading, setEditLoading] = useState<boolean>(false)
+    const [editShow, setEditShow] = useState<{visible: boolean; type: "yakit" | "yaklang"; isEnterprise?: boolean}>({
+        visible: false,
+        type: "yakit"
+    })
+    const [editInfo, setEditInfo] = useState<string>("")
+    const UpdateContentEdit = useMemoizedFn((type: "yakit" | "yaklang", isEnterprise?: boolean) => {
+        if (editShow.visible) return
+        setEditInfo(type === "yakit" ? (isEnterprise ? companyYakit : communityYakit) : communityYaklang)
+        setEditShow({visible: true, type: type, isEnterprise: !!isEnterprise})
+        setShow(false)
+    })
+    const onSubmitEdit = useMemoizedFn(() => {
+        setEditLoading(true)
+        const params: SetUpdateContentProp = {
+            type: editShow.type,
+            source: editShow.isEnterprise ? "company" : "community",
+            updateContent: JSON.stringify({
+                version: editShow.type === "yakit" ? yakitLastVersion : yaklangLastVersion,
+                content: editInfo || ""
+            })
+        }
+
+        NetWorkApi<SetUpdateContentProp, API.ActionSucceeded>({
+            method: "post",
+            url: "yak/versions",
+            data: params
+        })
+            .then((res) => {
+                info("修改更新内容成功")
+                if (editShow.type === "yakit") fetchYakitLastVersion()
+                else fetchYaklangLastVersion()
+                setTimeout(() => setEditShow({visible: false, type: "yakit"}), 100)
+            })
+            .catch((e) => failed(`修改错误 ${e}`))
+            .finally(() => {
+                setTimeout(() => setEditLoading(false), 300)
+            })
+    })
 
     const notice = useMemo(() => {
         return (
@@ -754,22 +1067,69 @@ const UIOpNotice: React.FC<UIOpNoticeProp> = React.memo((props) => {
                             </div>
                         </div>
                     </div> */}
+                    <div className={styles["notice-version-header"]}>
+                        <div className={styles["header-title"]}>更新通知</div>
+                        <div className={styles["switch-title"]}>
+                            启动检测更新
+                            <YakitSwitch
+                                style={{marginLeft: 4}}
+                                showInnerText={true}
+                                size='large'
+                                checked={!isCheck}
+                                onChange={(val: boolean) => {
+                                    setLocalValue(LocalGV.NoAutobootLatestVersionCheck, !val)
+                                    setIsCheck(!val)
+                                }}
+                            />
+                        </div>
+                    </div>
 
                     {type === "update" && (
                         <div className={styles["notice-version-wrapper"]}>
-                            <UIOpUpdateYakit
-                                version={yakitVersion}
-                                lastVersion={yakitLastVersion}
-                                isUpdateWait={isYakitUpdateWait}
-                                onDownload={onDownload}
-                            />
-                            <UIOpUpdateYaklang
-                                version={yaklangVersion}
-                                lastVersion={yaklangLastVersion}
-                                isUpdateWait={isYaklangUpdateWait}
-                                isRemoteMode={isRemoteMode}
-                                onDownload={onDownload}
-                            />
+                            <div className={styles["version-wrapper"]}>
+                                {userInfo.role === "superAdmin" && (
+                                    <UIOpUpdateYakit
+                                        version={yakitVersion}
+                                        lastVersion={yakitLastVersion}
+                                        isUpdateWait={isYakitUpdateWait}
+                                        onDownload={onDownload}
+                                        isSimple={true}
+                                        isEnterprise={!isEnterprise}
+                                        role={userInfo.role}
+                                        updateContent={!isEnterprise ? companyYakit : communityYakit}
+                                        onUpdateEdit={UpdateContentEdit}
+                                    />
+                                )}
+                                <UIOpUpdateYakit
+                                    version={yakitVersion}
+                                    lastVersion={yakitLastVersion}
+                                    isUpdateWait={isYakitUpdateWait}
+                                    onDownload={onDownload}
+                                    isEnterprise={isEnterprise}
+                                    role={userInfo.role}
+                                    updateContent={isEnterprise ? companyYakit : communityYakit}
+                                    onUpdateEdit={UpdateContentEdit}
+                                />
+                                <UIOpUpdateYaklang
+                                    version={yaklangVersion}
+                                    lastVersion={yaklangLastVersion}
+                                    localVersion={yaklangLocalVersion}
+                                    isRemoteMode={isRemoteMode}
+                                    onDownload={onDownload}
+                                    isEnterprise={isEnterprise}
+                                    role={userInfo.role}
+                                    updateContent={communityYaklang}
+                                    onUpdateEdit={UpdateContentEdit}
+                                />
+                            </div>
+                            <div className={styles["history-version"]}>
+                                <div
+                                    className={styles["content-style"]}
+                                    onClick={() => ipcRenderer.invoke("open-url", CodeGV.HistoricalVersion)}
+                                >
+                                    <GithubSvgIcon className={styles["icon-style"]} /> 历史版本
+                                </div>
+                            </div>
                         </div>
                     )}
 
@@ -788,14 +1148,20 @@ const UIOpNotice: React.FC<UIOpNoticeProp> = React.memo((props) => {
             </div>
         )
     }, [
+        type,
+        isCheck,
+        userInfo,
         isEngineLink,
-        isRemoteMode,
         yakitVersion,
         yakitLastVersion,
+        isYakitUpdateWait,
+        companyYakit,
+        communityYakit,
         yaklangVersion,
         yaklangLastVersion,
-        isYaklangUpdateWait,
-        isYakitUpdateWait
+        yaklangLocalVersion,
+        isRemoteMode,
+        communityYaklang
     ])
 
     const isUpdate = useMemo(() => {
@@ -810,13 +1176,42 @@ const UIOpNotice: React.FC<UIOpNoticeProp> = React.memo((props) => {
             overlayClassName={classnames(styles["ui-op-dropdown"], styles["ui-op-plus-dropdown"])}
             placement={"bottomRight"}
             content={notice}
-            onVisibleChange={(visible) => setShow(visible)}
+            visible={show}
+            onVisibleChange={(visible) => {
+                if (editShow.visible) setShow(false)
+                else setShow(visible)
+            }}
         >
             <div className={styles["ui-op-btn-wrapper"]}>
-                <Badge dot={isUpdate}>
-                    <VersionUpdateSvgIcon className={show ? styles["icon-hover-style"] : styles["icon-style"]}/>
-                </Badge>
+                <div className={classnames(styles["op-btn-body"], {[styles["op-btn-body-hover"]]: show})}>
+                    <Badge dot={isUpdate}>
+                        <VersionUpdateSvgIcon className={show ? styles["icon-hover-style"] : styles["icon-style"]} />
+                    </Badge>
+                </div>
             </div>
+            <YakitModal
+                title={
+                    editShow.type === "yakit"
+                        ? `${isEnterprise ? "企业版" : "社区版"} Yakit ${yakitLastVersion} 更新通知`
+                        : `Yaklang ${yaklangLastVersion} 更新通知`
+                }
+                centered={true}
+                closable={true}
+                type='white'
+                visible={editShow.visible}
+                cancelButtonProps={{size: "large", loading: editLoading}}
+                okButtonProps={{size: "large", loading: editLoading}}
+                onCancel={() => setEditShow({visible: false, type: "yakit"})}
+                onOk={onSubmitEdit}
+            >
+                <div className={styles["version-content-wrapper"]}>
+                    <YakitInput.TextArea
+                        rows={10}
+                        value={editInfo}
+                        onChange={(e) => setEditInfo(e.target.value)}
+                    ></YakitInput.TextArea>
+                </div>
+            </YakitModal>
         </YakitPopover>
     )
 })
@@ -833,7 +1228,7 @@ interface LatestRiskInfo {
     UpdatedAt: number
     Verbose: string
     TitleVerbose: string
-    Unread: boolean
+    IsRead: boolean
 }
 
 interface RisksProps {
@@ -843,7 +1238,7 @@ interface RisksProps {
 }
 
 /** 漏洞与风险等级对应关系 */
-const RiskType: { [key: string]: string } = {
+const RiskType: {[key: string]: string} = {
     "信息/指纹": "info",
     低危: "low",
     中危: "middle",
@@ -879,21 +1274,14 @@ const UIOpRisk: React.FC<UIOpRiskProp> = React.memo((props) => {
                     return
                 }
 
-                const infos = [...res.Data]
                 const risksOjb: RisksProps = {
                     Total: res.Total,
                     NewRiskTotal: res.NewRiskTotal,
-                    Data: infos.map((item) => {
-                        const info = risks.Data.filter((el) => el.Id === item.Id && el.Title === item.Title)[0]
-                        if (!!info) item.Unread = info.Unread
-                        else item.Unread = true
-                        return item
-                    })
+                    Data: [...res.Data]
                 }
                 setRisks({...risksOjb})
             })
-            .catch(() => {
-            })
+            .catch(() => {})
     })
 
     /** 获取最新的风险与漏洞信息(5秒一次) */
@@ -903,14 +1291,13 @@ const UIOpRisk: React.FC<UIOpRiskProp> = React.memo((props) => {
 
             ipcRenderer
                 .invoke("QueryRisks", {
-                    Pagination: {Limit: 1, Page: 1, Order: "desc", OrderBy: "updated_at"}
+                    Pagination: {Limit: 1, Page: 1, Order: "desc", OrderBy: "id"}
                 })
                 .then((res: QueryGeneralResponse<Risk>) => {
                     const {Data} = res
                     fetchNode.current = Data.length === 0 ? 0 : Data[0].Id
                 })
-                .catch((e) => {
-                })
+                .catch((e) => {})
                 .finally(() => {
                     setTimeout(() => {
                         update()
@@ -929,19 +1316,21 @@ const UIOpRisk: React.FC<UIOpRiskProp> = React.memo((props) => {
         }
     }, [isEngineLink])
 
-    const unread = useMemo(() => {
-        let flag = false
-        for (let info of risks.Data) {
-            if (info.Unread) {
-                flag = true
-                break
-            }
-        }
-        return flag
-    }, [risks])
-
     /** 单条点击阅读 */
     const singleRead = useMemoizedFn((info: LatestRiskInfo) => {
+        ipcRenderer
+            .invoke("set-risk-info-read", {AfterId: fetchNode.current, Ids: [info.Id]})
+            .then((res: Risk) => {
+                setRisks({
+                    ...risks,
+                    NewRiskTotal: info.IsRead ? risks.NewRiskTotal : risks.NewRiskTotal - 1,
+                    Data: risks.Data.map((item) => {
+                        if (item.Id === info.Id && item.Title === info.Title) item.IsRead = true
+                        return item
+                    })
+                })
+            })
+            .catch(() => {})
         ipcRenderer
             .invoke("QueryRisk", {Id: info.Id})
             .then((res: Risk) => {
@@ -951,30 +1340,28 @@ const UIOpRisk: React.FC<UIOpRiskProp> = React.memo((props) => {
                     title: "详情",
                     content: (
                         <div style={{overflow: "auto"}}>
-                            <RiskDetails info={res}/>
+                            <RiskDetails info={res} />
                         </div>
                     )
                 })
+            })
+            .catch(() => {})
+    })
+    /** 全部已读 */
+    const allRead = useMemoizedFn(() => {
+        ipcRenderer
+            .invoke("set-risk-info-read", {AfterId: fetchNode.current})
+            .then((res: Risk) => {
                 setRisks({
                     ...risks,
+                    NewRiskTotal: 0,
                     Data: risks.Data.map((item) => {
-                        if (item.Id === info.Id && item.Title === info.Title) item.Unread = false
+                        item.IsRead = true
                         return item
                     })
                 })
             })
-            .catch(() => {
-            })
-    })
-    /** 全部已读 */
-    const allRead = useMemoizedFn(() => {
-        setRisks({
-            ...risks,
-            Data: risks.Data.map((item) => {
-                item.Unread = false
-                return item
-            })
-        })
+            .catch(() => {})
     })
     /** 查看全部 */
     const viewAll = useMemoizedFn(() => {
@@ -983,7 +1370,7 @@ const UIOpRisk: React.FC<UIOpRiskProp> = React.memo((props) => {
             width: "70%",
             content: (
                 <>
-                    <RiskTable/>
+                    <RiskTable />
                 </>
             )
         })
@@ -994,7 +1381,7 @@ const UIOpRisk: React.FC<UIOpRiskProp> = React.memo((props) => {
             <div className={styles["ui-op-plus-wrapper"]}>
                 <div className={styles["ui-op-risk-body"]}>
                     <div className={styles["risk-header"]}>
-                        漏洞和风险统计（共 {risks.Total || 0} 条，其中新增 {risks.NewRiskTotal || 0} 条）
+                        漏洞和风险统计（共 {risks.Total || 0} 条，其中未读 {risks.NewRiskTotal || 0} 条）
                     </div>
 
                     <div className={styles["risk-info"]}>
@@ -1012,8 +1399,8 @@ const UIOpRisk: React.FC<UIOpRiskProp> = React.memo((props) => {
                                         >
                                             {item.Verbose}
                                         </div>
-                                        <Badge dot={item.Unread} offset={[3, 0]}>
-                                            <YakitEllipsis text={item.Title} width={type === "info" ? 280 : 310}/>
+                                        <Badge dot={!item.IsRead} offset={[3, 0]}>
+                                            <YakitEllipsis text={item.Title} width={type === "info" ? 280 : 310} />
                                         </Badge>
                                     </div>
                                 )
@@ -1024,8 +1411,8 @@ const UIOpRisk: React.FC<UIOpRiskProp> = React.memo((props) => {
                                         key={item.Id}
                                         onClick={() => singleRead(item)}
                                     >
-                                        <Badge dot={item.Unread} offset={[3, 0]}>
-                                            <YakitEllipsis text={`${item.Title} ${item.Verbose}}`} width={350}/>
+                                        <Badge dot={!item.IsRead} offset={[3, 0]}>
+                                            <YakitEllipsis text={`${item.Title} ${item.Verbose}}`} width={350} />
                                         </Badge>
                                     </div>
                                 )
@@ -1054,9 +1441,11 @@ const UIOpRisk: React.FC<UIOpRiskProp> = React.memo((props) => {
             onVisibleChange={(visible) => setShow(visible)}
         >
             <div className={styles["ui-op-btn-wrapper"]}>
-                <Badge dot={unread} offset={[2, 0]}>
-                    <RiskStateSvgIcon className={show ? styles["icon-hover-style"] : styles["icon-style"]}/>
-                </Badge>
+                <div className={classnames(styles["op-btn-body"], {[styles["op-btn-body-hover"]]: show})}>
+                    <Badge count={risks.NewRiskTotal} offset={[2, 15]}>
+                        <RiskStateSvgIcon className={show ? styles["icon-hover-style"] : styles["icon-style"]} />
+                    </Badge>
+                </div>
             </div>
         </YakitPopover>
     )

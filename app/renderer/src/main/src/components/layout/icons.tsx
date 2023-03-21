@@ -116,8 +116,8 @@ const YakitStoreThemeSvg = () => (
                 y2='10.0006'
                 gradientUnits='userSpaceOnUse'
             >
-                <stop stop-color='#FA931D' />
-                <stop offset='1' stop-color='#EF5B27' />
+                <stop stopColor='#FA931D' />
+                <stop offset='1' stopColor='#EF5B27' />
             </linearGradient>
         </defs>
     </svg>
@@ -797,4 +797,20 @@ const YakitConsoleDotsSvg = () => (
 /** @name 靠下 */
 export const YakitConsoleDotsSvgIcon = (props: Partial<CustomIconComponentProps>) => {
     return <Icon component={YakitConsoleDotsSvg} {...props} />
+}
+
+const Loading3QuartersSvg = () => (
+    <svg width='32' height='32' viewBox='0 0 32 32' fill='none' xmlns='http://www.w3.org/2000/svg'>
+        <path
+            d='M28 16C28 22.6274 22.6274 28 16 28C9.37258 28 4 22.6274 4 16C4 9.37258 9.37258 4 16 4'
+            stroke='#FBC6A1'
+            strokeWidth='3.2'
+            strokeLinecap='round'
+            strokeLinejoin='round'
+        />
+    </svg>
+)
+/** @name 加载中图标 */
+export const Loading3QuartersSvgIcon = (props: Partial<CustomIconComponentProps>) => {
+    return <Icon component={Loading3QuartersSvg} {...props} />
 }

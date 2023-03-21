@@ -26,10 +26,12 @@ import {SelectProps} from "antd"
  * @property {boolean} isRefresh： 刷新表格 滚动至0
  * @property {boolean} disableSorting：禁用排序
  * @property {object} query：查询条件
+ * @event (T) => onSetCurrentRow 选中项
  * @event (record: T) => void onSetCurrentRow:设置选中
  * @event (dragIndex: number, hoverIndex: number) => void onMoveRow:拖拽
  * @property {boolean} enableDragSort 是否拖拽排序
  * @event   onMoveRowEnd 拖拽结束
+ * @property {boolean}  useUpAndDown 是否启用上下建
  */
 export interface TableVirtualResizeProps<T> {
     ref?: any
@@ -58,10 +60,12 @@ export interface TableVirtualResizeProps<T> {
     isRefresh?: boolean //刷新表格 滚动至0
     disableSorting?: boolean //禁用排序
     query?: object
+    currentSelectItem?: T
     onSetCurrentRow?: (record: T) => void
     onMoveRow?: (dragIndex: number, hoverIndex: number) => void
-    enableDragSort?:boolean
-    onMoveRowEnd?:()=>void
+    enableDragSort?: boolean
+    onMoveRowEnd?: () => void
+    useUpAndDown?: boolean
 }
 
 export interface SortProps {
@@ -87,7 +91,8 @@ export interface SortProps {
  * @property {SorterProps} sorterProps：表格排序配置 
  * @property {boolean} enableDrag：表格排序配置 
  * @property {string} tip :提示 
- * @property {ReactNode} extra :右边 
+ * @property {ReactNode} beforeIconExtra :在排序/搜索icon前 
+ * @property {ReactNode} afterIconExtra :在排序/搜索icon前 
  */
 export interface ColumnsTypeProps {
     title: string
@@ -102,13 +107,15 @@ export interface ColumnsTypeProps {
     /** @access private */
     right?: number // 外面不需要传，不接收，紧作为固定列使用
     /** @access private 是否有默认宽度*/
-    isDefWidth?:boolean
+    isDefWidth?: boolean
     render?: (text, record, index) => ReactNode
     filterProps?: FilterProps
     sorterProps?: SorterProps
     enableDrag?: boolean
     tip?: string
-    extra?: ReactNode
+    // extra?: ReactNode
+    beforeIconExtra?: ReactNode
+    afterIconExtra?: ReactNode
 }
 
 interface FilterSearchInputProps extends SearchProps {

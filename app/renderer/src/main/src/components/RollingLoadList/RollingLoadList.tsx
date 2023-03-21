@@ -205,13 +205,13 @@ export const RollingLoadList = <T extends any>(props: RollingLoadListProps<T>) =
                             const itemArr = i.data as any
                             return (
                                 <div
-                                    className={`${isGridLayout && col && col > 1 && "display-flex" || ''}`}
-                                    key={itemArr.map((ele) => ele[rowKey || "Id"]).join("-")}
+                                    className={`${(isGridLayout && col && col > 1 && "display-flex") || "" || ""}`}
+                                    key={itemArr.map((ele) => ele[rowKey || "Id"]).join("-") + "-" + index}
                                 >
                                     {itemArr.map((ele, number) => (
                                         <div
-                                            className={`${col && classNameWidth[col]} ${classNameRow || ''}`}
-                                            key={ele[rowKey || "Id"]}
+                                            className={`${(col && classNameWidth[col]) || ""} ${classNameRow || ""}`}
+                                            key={ele[rowKey || "Id"]+ "--" + index}
                                         >
                                             {renderRow(ele, indexMapRef.current?.get(`${ele[rowKey || "Id"]}`) || 0)}
                                         </div>
@@ -225,7 +225,7 @@ export const RollingLoadList = <T extends any>(props: RollingLoadListProps<T>) =
                         </div>
                     )}
                     {!loading && !hasMore && (page || 0) > 0 && (
-                        <div className='grid-block text-center'>暂无更多数据</div>
+                        <div className='grid-block text-center no-more-text'>暂无更多数据</div>
                     )}
                 </div>
             </div>

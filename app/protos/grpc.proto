@@ -61,6 +61,9 @@ message ExecBatchYakScriptRequest {
   double BaseProgress = 16;
   // 这个很关键，不然会报错
   bool FromRecover = 17;
+
+  string YakScriptOnlineGroup = 18;
+  string TaskName = 19;
 }
 
 message ExecBatchYakScriptResult {
@@ -118,6 +121,8 @@ service Yak {
 
   // 中间人劫持
   rpc MITM(stream MITMRequest) returns (stream MITMResponse);
+  rpc SetMITMFilter(SetMITMFilterRequest) returns (SetMITMFilterResponse);
+  rpc GetMITMFilter(Empty) returns (SetMITMFilterRequest);
   rpc DownloadMITMCert(Empty) returns (MITMCert);
 
   // 开启端口
@@ -151,6 +156,8 @@ service Yak {
   rpc ExecuteBatchPacketYakScript(ExecuteBatchPacketYakScriptParams) returns (stream ExecBatchYakScriptResult);
   rpc GetYakScriptTags(Empty) returns (GetYakScriptTagsResponse);
   rpc QueryYakScriptLocalAndUser(QueryYakScriptLocalAndUserRequest) returns (QueryYakScriptLocalAndUserResponse);
+  rpc QueryYakScriptByOnlineGroup(QueryYakScriptByOnlineGroupRequest) returns (QueryYakScriptLocalAndUserResponse);
+  rpc QueryYakScriptLocalAll(Empty) returns (QueryYakScriptLocalAndUserResponse);
 
   // HTTPFlow
   rpc GetHTTPFlowByHash(GetHTTPFlowByHashRequest) returns (HTTPFlow);
@@ -219,6 +226,7 @@ service Yak {
 
   // 端口扫描的封装
   rpc PortScan(PortScanRequest) returns (stream ExecResult);
+  rpc SimpleDetect(PortScanRequest) returns (stream ExecResult);
   rpc ViewPortScanCode(Empty) returns (SimpleScript);
 
   // 资产管理
@@ -243,6 +251,9 @@ service Yak {
   rpc ExportMenuItem(Empty) returns (ExportMenuItemResult);
   rpc GetMenuItemById(GetMenuItemByIdRequest) returns (MenuItem);
   rpc QueryGroupsByYakScriptId(QueryGroupsByYakScriptIdRequest) returns (GroupNames);
+  rpc AddMenus(AddMenuRequest) returns (Empty);
+  rpc QueryAllMenuItem(QueryAllMenuItemRequest) returns (MenuByGroup);
+  rpc DeleteAllMenu(QueryAllMenuItemRequest) returns (Empty);
 
   // document
   rpc SaveMarkdownDocument(SaveMarkdownDocumentRequest) returns (Empty);
@@ -285,12 +296,15 @@ service Yak {
   rpc ResetRiskTableStats(Empty) returns (Empty);
   rpc QueryAvailableTarget(Empty) returns (Fields);
   rpc QueryNewRisk(QueryNewRiskRequest) returns (QueryNewRiskResponse);
+  rpc NewRiskRead(NewRiskReadRequest) returns (Empty);
 
   // Report
   rpc QueryReports(QueryReportsRequest) returns(QueryReportsResponse);
   rpc QueryReport(QueryReportRequest) returns (Report);
   rpc DeleteReport(DeleteReportRequest) returns (Empty);
   rpc QueryAvailableReportFrom(Empty) returns (Fields);
+
+  rpc DownloadReport(DownloadReportRequest) returns (Empty);
 
   //Yso
   rpc GetAllYsoGadgetOptions(Empty) returns (YsoOptionsWithVerbose);
@@ -355,6 +369,7 @@ service Yak {
   rpc DeleteAllLocalPlugins(Empty) returns (Empty);
   rpc GetYakScriptTagsAndType(Empty) returns (GetYakScriptTagsAndTypeResponse);
   rpc DeleteLocalPluginsByWhere(DeleteLocalPluginsByWhereRequest) returns (Empty);
+  rpc DownloadOnlinePluginByScriptNames(DownloadOnlinePluginByScriptNamesRequest) returns (DownloadOnlinePluginByScriptNamesResponse);
   // 新的扫描模式
   rpc ExecPacketScan(ExecPacketScanRequest) returns (stream ExecResult);
 
@@ -397,18 +412,122 @@ service Yak {
   rpc SetCurrentProject(SetCurrentProjectRequest) returns (Empty);
   rpc GetCurrentProject(Empty) returns (ProjectDescription);
   rpc GetProjects(GetProjectsRequest) returns (GetProjectsResponse);
-  rpc NewProject(NewProjectRequest) returns (Empty);
+  rpc NewProject(NewProjectRequest) returns (NewProjectResponse);
   rpc IsProjectNameValid(IsProjectNameValidRequest) returns (Empty);
   rpc RemoveProject(RemoveProjectRequest) returns (Empty);
+
+  rpc DeleteProject(DeleteProjectRequest) returns (Empty);
+  rpc GetDefaultProject(Empty) returns (ProjectDescription);
+  rpc QueryProjectDetail(QueryProjectDetailRequest) returns (ProjectDescription);
 
   // 导入导出项目，带密码，带进度
   rpc ExportProject(ExportProjectRequest) returns (stream ProjectIOProgress);
   rpc ImportProject(ImportProjectRequest) returns (stream ProjectIOProgress);
+  // 迁移旧数据库
+  rpc MigrateLegacyDatabase(Empty) returns (Empty);
+
+  // 从规则中提取数据
+  rpc QueryMITMRuleExtractedData(QueryMITMRuleExtractedDataRequest) returns (QueryMITMRuleExtractedDataResponse);
+
+  // CVE
+  rpc IsCVEDatabaseReady(IsCVEDatabaseReadyRequest) returns (IsCVEDatabaseReadyResponse);
+  rpc UpdateCVEDatabase(UpdateCVEDatabaseRequest) returns (stream ExecResult);
+  rpc ExportsProfileDatabase(ExportsProfileDatabaseRequest) returns (stream ExecResult);
+  rpc ImportsProfileDatabase(ImportsProfileDatabaseRequest) returns (stream ExecResult);
+  rpc QueryCVE(QueryCVERequest) returns (QueryCVEResponse);
+}
+
+message QueryCVERequest {
+  Paging Pagination = 1;
+  // NETWORK/LOCAL/ADJACENT_NETWORK/PHYSICAL
+  string AccessVector = 2;
+  // HIGH/MIDDLE/LOW
+  string AccessComplexity = 3;
+  string CWE = 4;
+  string Year = 5;
+  string Severity = 6;
+  double Score = 7;
+  string Product = 8;
+}
+
+message CVEDetail {
+  string CVE = 1;
+  string DescriptionZh = 2;
+  string DescriptionOrigin = 3;
+  string Title = 4;
+  string Solution = 5;
+  string AccessVector = 7;
+  string AccessComplexity = 8;
+  string Authentication = 9;
+  string ConfidentialityImpact = 10;
+  string IntegrityImpact = 11;
+  string AvailabilityImpact = 12;
+
+  string Severity = 14;
+  int64 PublishedAt = 15;
+  string CWE = 16;
+  string CVSSVersion = 17;
+  string CVSSVectorString = 18;
+  double BaseCVSSv2Score = 19;
+  double ExploitabilityScore = 20;
+  bool ObtainAllPrivileged = 21;
+  bool ObtainUserPrivileged = 22;
+  bool ObtainOtherPrivileged = 23;
+  bool UserInteractionRequired = 24;
+}
+
+message QueryCVEResponse {
+  Paging Pagination = 1;
+  int64 Total = 2;
+  repeated CVEDetail Data = 3;
+}
+
+message ImportsProfileDatabaseRequest {
+  string LocalProfileFile = 1;
+}
+
+message ExportsProfileDatabaseRequest {
+  string LocalProfileFile = 1;
+}
+
+message UpdateCVEDatabaseRequest {
+  string Proxy = 1;
+}
+
+message IsCVEDatabaseReadyResponse {
+  bool Ok = 1;
+  string Reason = 2;
+}
+
+message IsCVEDatabaseReadyRequest {
+
+}
+
+message MITMRuleExtractedData {
+  int64 Id = 1;
+  int64 CreatedAt = 2;
+  string SourceType = 3;
+  string TraceId = 4;
+  string Regexp = 5;
+  string RuleName = 6;
+  string Data = 7;
+}
+
+message QueryMITMRuleExtractedDataResponse {
+  repeated MITMRuleExtractedData Data = 1;
+  int64 Total = 2;
+  Paging Pagination = 3;
+}
+
+message QueryMITMRuleExtractedDataRequest {
+  Paging Pagination = 1;
+  string HTTPFlowHash = 2;
 }
 
 message ExportProjectRequest {
   string ProjectName = 1;
   string Password = 2;
+  int64 Id = 3;
 }
 
 message ProjectIOProgress {
@@ -425,6 +544,8 @@ message ImportProjectRequest {
   string LocalProjectName = 1;
   string ProjectFilePath = 2;
   string Password = 3;
+  int64 FolderId = 4;
+  int64 ChildFolderId = 5;
 }
 
 message IsPrivilegedForNetRawResponse {
@@ -439,17 +560,32 @@ message RemoveProjectRequest {
 
 message IsProjectNameValidRequest {
   string ProjectName = 1;
+  int64 FolderId = 2;
+  int64 ChildFolderId = 3;
+  string Type = 4;
 }
 
 message NewProjectRequest {
   string ProjectName = 1;
   string Description = 2;
+  int64 FolderId = 3;
+  int64 ChildFolderId = 4;
+  string Type = 5;
+  int64  Id = 6;
+}
+
+message NewProjectResponse {
+  int64 Id = 1;
+  string ProjectName = 2;
 }
 
 message GetProjectsRequest {
   string ProjectName = 1;
   string Description = 2;
   Paging Pagination = 3;
+  int64 FolderId = 4;
+  int64 ChildFolderId = 5;
+  string Type = 6;
 }
 
 message ProjectDescription {
@@ -461,6 +597,13 @@ message ProjectDescription {
 
   // 创建时间
   int64 CreatedAt = 5;
+
+  int64 FolderId = 6;
+  int64 ChildFolderId = 7;
+  string Type = 8;
+  int64 UpdateAt = 9;
+  string FolderName = 10;
+  string ChildFolderName = 11;
 }
 
 message GetProjectsResponse {
@@ -468,12 +611,24 @@ message GetProjectsResponse {
   Paging Pagination = 2;
   int64 Total = 3;
   int64 TotalPage = 4;
+  int64 ProjectToTal = 9;
 }
 
 message SetCurrentProjectRequest {
   // ProjectName
   string ProjectName = 1;
+  int64 Id = 2;
 }
+
+message DeleteProjectRequest {
+  int64 Id = 1;
+  bool IsDeleteLocal = 2;
+}
+
+message QueryProjectDetailRequest {
+  int64 Id = 1;
+}
+
 
 message AttachCombinedOutputRequest {
 
@@ -742,6 +897,8 @@ message DownloadOnlinePluginByTokenRequest {
   string Tags = 7;
   string UserName = 8;
   int64  UserId = 9;
+  string TimeSearch = 10;
+  string Group = 11;
 }
 
 message DownloadOnlinePluginByIdRequest {
@@ -754,6 +911,20 @@ message DownloadOnlinePluginByIdsRequest {
   repeated int64 OnlineIDs = 1;
   string Token = 2;
   repeated string UUID = 3;
+}
+
+message DownloadOnlinePluginByScriptNamesRequest {
+  repeated string ScriptNames = 1;
+  string Token = 2;
+}
+
+message DownloadOnlinePluginByScriptNamesResponse {
+  repeated DownloadOnlinePluginByScriptName Data = 1;
+}
+
+message DownloadOnlinePluginByScriptName {
+  string ScriptName = 1;
+  int64 Id = 2;
 }
 
 message OnlineProfile {
@@ -810,6 +981,8 @@ message ExecBatchYakScriptUnfinishedTask {
   double Percent = 1;
   int64 CreatedAt = 2;
   string Uid = 3;
+  string YakScriptOnlineGroup = 4;
+  string TaskName = 5;
 }
 
 message GetExecBatchYakScriptUnfinishedTaskResponse {
@@ -863,6 +1036,10 @@ message QueryYakScriptLocalAndUserRequest {
 
 message QueryYakScriptLocalAndUserResponse {
   repeated YakScript Data = 1;
+}
+
+message QueryYakScriptByOnlineGroupRequest {
+  string OnlineGroup = 1;
 }
 
 message ExtractDataToFileRequest {
@@ -1277,6 +1454,8 @@ message Risk {
   string RuntimeId = 22;
 
   string CVE = 23;
+  string Description = 24;
+  string Solution = 25;
 }
 
 message QueryRisksRequest {
@@ -1314,6 +1493,12 @@ message NewRisk {
   int64 UpdatedAt = 4;
   string Verbose = 5;
   string TitleVerbose = 6;
+  bool IsRead = 7;
+}
+
+message NewRiskReadRequest {
+  int64 AfterId = 1;
+  repeated int64 Ids = 2;
 }
 
 message VerifyTunnelServerDomainParams {
@@ -1498,6 +1683,12 @@ message Host {
   repeated string Domains = 5;
 }
 
+message DownloadReportRequest {
+  string FileData = 1;
+  string FileName = 2;
+  string FileDir = 3;
+}
+
 message DeleteYakScriptExecResultRequest {
   repeated int64 Id = 1;
   string YakScriptName = 2;
@@ -1617,6 +1808,7 @@ message GroupNames {
 
 message QueryGroupsByYakScriptIdRequest {
   int64 YakScriptId = 1;
+  string Mode = 2;
 }
 
 message MenuItem {
@@ -1625,6 +1817,8 @@ message MenuItem {
   int64 YakScriptId = 3;
   BatchExecutionPluginFilter Query = 4;
   uint64 MenuItemId = 5;
+  int64 GroupSort = 6;
+  string YakScriptName = 7;
 }
 
 // 这里的小写不要改动，兼容前端已有的格式
@@ -1638,6 +1832,8 @@ message BatchExecutionPluginFilter {
 message MenuItemGroup {
   string Group = 1;
   repeated MenuItem Items = 2;
+  int64 MenuSort = 3;
+  string Mode = 4;
 }
 
 message GetMenuItemByIdRequest {
@@ -1656,12 +1852,25 @@ message YakScriptIsInMenuRequest {
 message RemoveFromMenuRequest {
   int64 YakScriptId = 1;
   string Group = 2;
+  string Mode = 3;
 }
 
 message AddToMenuRequest {
   int64 YakScriptId = 1;
   string Group = 2;
   string Verbose = 3;
+  string Mode = 4;
+  int64  MenuSort = 5;
+  int64  GroupSort = 6;
+}
+
+message AddMenuRequest {
+  repeated MenuItemGroup  Data = 1;
+}
+
+message QueryAllMenuItemRequest {
+  string Mode = 1;
+  string Group = 2;
 }
 
 message ImportMenuItemRequest {
@@ -1891,6 +2100,8 @@ message QueryYakScriptRequest {
   bool NoResultReturn = 12; // 这是一很特殊的选项，如果开启了，total 将会为 0
   int64 UserId = 13;
   string UserName = 14;
+
+  bool IgnoreGeneralModuleOrder = 15;
 }
 
 message QueryYakScriptResponse {
@@ -1944,6 +2155,7 @@ message YakScript {
   string HeadImg = 25;
   string OnlineBaseUrl = 26;
   int64  BaseOnlineId = 27;
+  bool OnlineOfficial = 28;
 }
 
 message GetYakScriptTagsAndTypeResponse {
@@ -2238,7 +2450,7 @@ message QueryHTTPFlowRequest {
 
   int64 AfterBodyLength = 27;
   int64 BeforeBodyLength = 28;
-
+  string IsWebsocket = 29;
 }
 
 message DeleteHTTPFlowRequest {
@@ -2377,6 +2589,21 @@ message WebsocketFlow {
   string DataVerbose = 10;
   bool IsJson = 11;
   bool IsProtobuf = 12;
+}
+
+message SetMITMFilterRequest {
+  repeated string includeHostname = 7;
+  repeated string excludeHostname = 8;
+  repeated string excludeSuffix = 9;
+  repeated string includeSuffix = 10;
+  repeated string excludeMethod = 11;
+  repeated string excludeContentTypes = 40;
+  repeated string excludeUri = 43;
+  repeated string includeUri = 44;
+}
+
+message SetMITMFilterResponse {
+
 }
 
 // 中间人劫持的问题

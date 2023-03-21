@@ -1,4 +1,4 @@
-import {useRef, useEffect, useState, Suspense, lazy} from "react"
+import React, {useRef, useEffect, useState, Suspense, lazy} from "react"
 // by types
 import {failed} from "./utils/notification"
 import {useHotkeys} from "react-hotkeys-hook"
@@ -15,8 +15,8 @@ import UILayout from "./components/layout/UILayout"
 import {ENTERPRISE_STATUS, fetchEnv, getJuageEnvFile} from "@/utils/envfile"
 import {LocalGV, RemoteGV} from "./yakitGV"
 import {YakitModal} from "./components/yakitUI/YakitModal/YakitModal"
-
 import styles from "./app.module.scss"
+import { coordinate } from "./pages/globalVariable"
 
 const IsEnterprise: boolean = ENTERPRISE_STATUS.IS_ENTERPRISE_STATUS === getJuageEnvFile()
 /** 快捷键目录 */
@@ -50,7 +50,6 @@ const InterceptKeyword = [
 ]
 /** 部分页面懒加载 */
 const Main = lazy(() => import("./pages/MainOperator"))
-const EnterpriseJudgeLogin = lazy(() => import("./pages/EnterpriseJudgeLogin"))
 
 const {ipcRenderer} = window.require("electron")
 
@@ -60,17 +59,36 @@ interface OnlineProfileProps {
 }
 
 function NewApp() {
-    const [loading, setLoading] = useState(false)
-
     /** 是否展示用户协议 */
     const [agreed, setAgreed] = useState(false)
     /** 展示用户协议计时时间 */
     const [readingSeconds, setReadingSeconds, getReadingSeconds] = useGetState<number>(3)
     const agrTimeRef = useRef<any>(null)
+    /** 私有域是否设置成功 */
+    const [onlineProfileStatus, setOnlineProfileStatus] = useState<boolean>(false)
+
+    // 全局记录鼠标坐标位置(为右键菜单提供定位)
+    const coordinateTimer = useRef<any>(null)
+    useEffect(() => {
+        document.onmousemove = (e) => {
+            const {screenX, screenY, clientX, clientY, pageX, pageY} = e
+            if (coordinateTimer.current) {
+                clearTimeout(coordinateTimer.current)
+                coordinateTimer.current = null
+            }
+            coordinateTimer.current = setTimeout(() => {
+                coordinate.screenX = screenX
+                coordinate.screenY = screenY
+                coordinate.clientX = clientX
+                coordinate.clientY = clientY
+                coordinate.pageX = pageX
+                coordinate.pageY = pageY
+            }, 50)
+        }
+    }, [])
 
     /** 是否展示用户协议 */
     useEffect(() => {
-        setLoading(true)
         ipcRenderer
             .invoke("fetch-local-cache", LocalGV.UserProtocolAgreed)
             .then((value: any) => {
@@ -87,11 +105,7 @@ function NewApp() {
                 }
             })
             .catch(() => {})
-            .finally(() => setTimeout(() => setLoading(false), 300))
     }, [])
-
-    // 企业版-连接引擎后验证license=>展示企业登录
-    const [isJudgeLicense, setJudgeLicense] = useState<boolean>(IsEnterprise)
 
     /** 将渲染进程的环境变量传入主进程 */
     useEffect(() => {
@@ -133,6 +147,9 @@ function NewApp() {
                     .catch((e) => {
                         failed(`获取失败:${e}`)
                     })
+                    .finally(() => {
+                        setOnlineProfileStatus(true)
+                    })
             } else {
                 const values = JSON.parse(setting)
                 ipcRenderer
@@ -145,7 +162,9 @@ function NewApp() {
                         refreshLogin()
                     })
                     .catch((e: any) => failed("设置私有域失败:" + e))
-                    .finally(() => setTimeout(() => setLoading(false), 300))
+                    .finally(() => {
+                        setOnlineProfileStatus(true)
+                    })
             }
         })
     }
@@ -228,9 +247,11 @@ function NewApp() {
                     width='75%'
                     cancelText={"关闭 / Closed"}
                     onCancel={() => ipcRenderer.invoke("UIOperate", "close")}
-                    okButtonProps={{
-                        // disabled: readingSeconds > 0,
-                    }}
+                    okButtonProps={
+                        {
+                            // disabled: readingSeconds > 0,
+                        }
+                    }
                     onOk={() => {
                         ipcRenderer.invoke("set-local-cache", LocalGV.UserProtocolAgreed, true)
                         setReadingSeconds(3)
@@ -278,11 +299,7 @@ function NewApp() {
     return (
         <UILayout linkSuccess={linkSuccess}>
             <Suspense fallback={<div>Loading Main</div>}>
-                {isJudgeLicense ? (
-                    <EnterpriseJudgeLogin setJudgeLicense={setJudgeLicense} setJudgeLogin={(v: boolean) => {}} />
-                ) : (
-                    <Main onErrorConfirmed={() => {}} />
-                )}
+                <Main onErrorConfirmed={() => {}} />
             </Suspense>
         </UILayout>
     )
