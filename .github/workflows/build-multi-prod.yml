@@ -5,6 +5,8 @@ on:
         tags:
             - "v*-*"
             - "!v*-render"
+            - "!v*-sast-render"
+            - "!v*-sast-pack"
 
 jobs:
     build_yakit:
