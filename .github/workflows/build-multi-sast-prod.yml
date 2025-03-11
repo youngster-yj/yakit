@@ -76,8 +76,9 @@ jobs:
 
             - name: Echo SastScan Package Version To Env
               run: |
-                echo "ENV_TAG=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
-                echo "ENV_TAG=${ENV_TAG%-sast}" >> $GITHUB_ENV
+                ENV_TAG=${GITHUB_REF_NAME:1}
+                ENV_TAG=${ENV_TAG%-sast}
+                echo "ENV_TAG=$ENV_TAG" >> $GITHUB_ENV
               shell: bash
 
             - run: yarn install
