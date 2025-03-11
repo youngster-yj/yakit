@@ -75,7 +75,9 @@ jobs:
               run: wget -O bins/yak_darwin_arm64.sha256.txt https://oss-qn.yaklang.com/yak/${ENGINE_VERSION}/yak_darwin_arm64.sha256.txt
 
             - name: Echo SastScan Package Version To Env
-              run: echo "ENV_TAG=${GITHUB_REF_NAME:1%%-sast}" >> $GITHUB_ENV
+              run: |
+                echo "ENV_TAG=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
+                echo "ENV_TAG=${ENV_TAG%-sast}" >> $GITHUB_ENV
               shell: bash
 
             - run: yarn install
