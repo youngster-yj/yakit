@@ -1,4 +1,4 @@
-name: Build Multi-Platform Prod
+name: Build Multi-Sast-Platform Prod
 
 on:
     push:
