@@ -1,11 +1,12 @@
 name: Build Multi-Sast-Platform Prod
 
-workflow_dispatch:
-    inputs:
-        version:
-            description: "Input version (e.g. x.x.x-月日)"
-            required: true
-            type: string
+on:
+    workflow_dispatch:
+        inputs:
+            version:
+                description: "Input version (e.g. x.x.x-月日)"
+                required: true
+                type: string
 
 jobs:
     build_yakit:
