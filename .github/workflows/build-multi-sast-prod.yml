@@ -19,7 +19,7 @@ jobs:
             - name: Check if the version number is correct
               run: |
                   VERSION_INPUT=$GITHUB_REF_NAME
-                  if [[ $VERSION_INPUT != v.*-sast ]]; then
+                  if [[ $VERSION_INPUT != v*-sast ]]; then
                     echo "Error: Version must start with 'v' and end with '-sast'." >&2
                     exit 1
                   else
