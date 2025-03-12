@@ -18,7 +18,7 @@ jobs:
         steps:
             - name: Check if the version number is correct
               run: |
-                  VERSION_INPUT=$GITHUB_REF_NAME
+                  VERSION_INPUT=$github.ref_name
                   if [[ $VERSION_INPUT !=~ ^v.*-sast$ ]]; then
                     echo "Error: Version must start with 'v' and end with '-sast'." >&2
                     exit 1
@@ -84,7 +84,7 @@ jobs:
 
             - name: Echo SastScan Package Version To Env
               run: |
-                  ENV_TAG=${{ GITHUB_REF_NAME }}
+                  ENV_TAG=${{ github.ref_name }}
                   ENV_TAG=${ENV_TAG#v}
                   ENV_TAG=${ENV_TAG%-sast}
                   echo "ENV_TAG=$ENV_TAG" >> $GITHUB_ENV
@@ -160,7 +160,7 @@ jobs:
     #     steps:
     #         - name: Echo Package Version To Env
     #           run: |
-    #               ENV_TAG=${{ GITHUB_REF_NAME }}
+    #               ENV_TAG=${{ github.ref_name }}
     #               ENV_TAG=${ENV_TAG#v}
     #               ENV_TAG=${ENV_TAG%-sast}
     #               echo "ENV_TAG=$ENV_TAG" >> $GITHUB_ENV
