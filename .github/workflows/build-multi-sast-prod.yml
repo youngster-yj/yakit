@@ -2,6 +2,9 @@ name: Build Multi-Sast-Platform Prod
 
 on:
     workflow_dispatch:
+    push:
+      tags:
+        - 'v*-sast'
 
 jobs:
     build_yakit:
