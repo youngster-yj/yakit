@@ -1,9 +1,11 @@
 name: Build Multi-Sast-Platform Prod
 
-on:
-    push:
-        tags:
-            - "v*-sast"
+workflow_dispatch:
+    inputs:
+        version:
+            description: "Input version (e.g. x.x.x-月日)"
+            required: true
+            type: string
 
 jobs:
     build_yakit:
@@ -75,7 +77,9 @@ jobs:
               run: wget -O bins/yak_darwin_arm64.sha256.txt https://oss-qn.yaklang.com/yak/${ENGINE_VERSION}/yak_darwin_arm64.sha256.txt
 
             - name: Echo SastScan Package Version To Env
-              run: echo "ENV_TAG=${GITHUB_REF_NAME:1%%-sast}" >> $GITHUB_ENV
+              run: |
+                ENV_TAG=${{ github.event.inputs.version }}
+                echo "ENV_TAG=$ENV_TAG" >> $GITHUB_ENV
               shell: bash
 
             - run: yarn install
@@ -147,7 +151,7 @@ jobs:
     #     runs-on: ubuntu-latest
     #     steps:
     #         - name: Echo Package Version To Env
-    #           run: echo "ENV_TAG=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
+    #           run: echo "ENV_TAG=${{ github.event.inputs.version }}" >> $GITHUB_ENV
 
     #         - name: Download SastScan And Legacy SastScan
     #           uses: actions/download-artifact@v4
