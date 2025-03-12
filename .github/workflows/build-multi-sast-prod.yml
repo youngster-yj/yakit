@@ -19,7 +19,7 @@ jobs:
             - name: Check if the version number is correct
               run: |
                   VERSION_INPUT=$GITHUB_REF_NAME
-                  if [[ $VERSION_INPUT !=~ ^v.*-sast$ ]]; then
+                  if [[ $VERSION_INPUT != v.*-sast ]]; then
                     echo "Error: Version must start with 'v' and end with '-sast'." >&2
                     exit 1
                   else
@@ -173,15 +173,6 @@ jobs:
 
     #         - run: ls
     #           name: Ls Published Artifacts...
-
-    #         - name: Create Release and Upload Assets
-    #           if: ${{ matrix.artifact == 'SastScan' }}
-    #           uses: ncipollo/release-action@v1
-    #           with:
-    #               artifacts: ./*
-    #               token: ${{ secrets.GITHUB_TOKEN }}
-    #               name: Release ${{ github.ref_name }}
-    #               tag: ${{ github.ref_name }}
 
     #         - name: Generate OSS File Path
     #           run: |
