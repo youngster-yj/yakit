@@ -1,9 +1,11 @@
 name: Build Multi-Sast-Platform Prod
 
-on:
-    push:
-        tags:
-            - "v*-sast"
+workflow_dispatch:
+    inputs:
+        version:
+            description: "Input version (e.g. x.x.x-月日)"
+            required: true
+            type: string
 
 jobs:
     build_yakit:
@@ -76,8 +78,7 @@ jobs:
 
             - name: Echo SastScan Package Version To Env
               run: |
-                ENV_TAG=${GITHUB_REF_NAME:1}
-                ENV_TAG=${ENV_TAG%-sast}
+                ENV_TAG=${{ github.event.inputs.version }}
                 echo "ENV_TAG=$ENV_TAG" >> $GITHUB_ENV
               shell: bash
 
@@ -150,7 +151,7 @@ jobs:
     #     runs-on: ubuntu-latest
     #     steps:
     #         - name: Echo Package Version To Env
-    #           run: echo "ENV_TAG=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
+    #           run: echo "ENV_TAG=${{ github.event.inputs.version }}" >> $GITHUB_ENV
 
     #         - name: Download SastScan And Legacy SastScan
     #           uses: actions/download-artifact@v4
