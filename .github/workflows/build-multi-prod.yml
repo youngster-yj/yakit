@@ -6,7 +6,6 @@ on:
             - "v*-*"
             - "!v*-render"
             - "!v*-sast-render"
-            - "!v*-sast"
 
 jobs:
     build_yakit:
