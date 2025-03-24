@@ -172,12 +172,12 @@ jobs:
             - name: "Build SCE Render"
               if: ${{ inputs.version == 'sce' }}
               working-directory: ./
-              run: yarn build-render${{ inputs.devTool && '-test' || '' }}-sast-scan
+              run: yarn build-render${{ inputs.devTool && '-test' || '' }}-irify
 
             - name: "Build SEE Render"
               if: ${{ inputs.version == 'see' }}
               working-directory: ./
-              run: yarn build-render${{ inputs.devTool && '-test' || '' }}-sast-scan-enterprise
+              run: yarn build-render${{ inputs.devTool && '-test' || '' }}-irify-enterprise
 
             - name: Build Yakit (MultiPlatform)
               if: ${{ inputs.platform == 'mwl' }}
@@ -193,9 +193,9 @@ jobs:
                   elif [ "${{ inputs.version }}" = "se" ]; then
                     yarn electron-publish-se${{ inputs.legacy && '-legacy' || '' }}
                   elif [ "${{ inputs.version }}" = "sce" ]; then
-                    yarn electron-publish-sastScan${{ inputs.legacy && '-legacy' || '' }}
+                    yarn electron-publish-irify${{ inputs.legacy && '-legacy' || '' }}
                   elif [ "${{ inputs.version }}" = "see" ]; then
-                    yarn electron-publish-sastScan-ee${{ inputs.legacy && '-legacy' || '' }}
+                    yarn electron-publish-irify-ee${{ inputs.legacy && '-legacy' || '' }}
                   else
                     echo "未知的输入值: ${{ inputs.version }}" >&2
                     exit 1
@@ -214,9 +214,9 @@ jobs:
                   elif [ "${{ inputs.version }}" = "se" ]; then
                     yarn pack-mac-se${{ inputs.legacy && '-legacy' || '' }}
                   elif [ "${{ inputs.version }}" = "sce" ]; then
-                    yarn pack-mac-sastScan${{ inputs.legacy && '-legacy' || '' }}
+                    yarn pack-mac-irify${{ inputs.legacy && '-legacy' || '' }}
                   elif [ "${{ inputs.version }}" = "see" ]; then
-                    yarn pack-mac-sastScan-ee${{ inputs.legacy && '-legacy' || '' }}
+                    yarn pack-mac-irify-ee${{ inputs.legacy && '-legacy' || '' }}
                   else
                     echo "未知的输入值: ${{ inputs.version }}" >&2
                     exit 1
@@ -235,9 +235,9 @@ jobs:
                   elif [ "${{ inputs.version }}" = "se" ]; then
                     yarn pack-linux-se${{ inputs.legacy && '-legacy' || '' }}
                   elif [ "${{ inputs.version }}" = "sce" ]; then
-                    yarn pack-linux-sastScan${{ inputs.legacy && '-legacy' || '' }}
+                    yarn pack-linux-irify${{ inputs.legacy && '-legacy' || '' }}
                   elif [ "${{ inputs.version }}" = "see" ]; then
-                    yarn pack-linux-sastScan-ee${{ inputs.legacy && '-legacy' || '' }}
+                    yarn pack-linux-irify-ee${{ inputs.legacy && '-legacy' || '' }}
                   else
                     echo "未知的输入值: ${{ inputs.version }}" >&2
                     exit 1
@@ -256,9 +256,9 @@ jobs:
                   elif [ "${{ inputs.version }}" = "se" ]; then
                     yarn pack-win-se${{ inputs.legacy && '-legacy' || '' }}
                   elif [ "${{ inputs.version }}" = "sce" ]; then
-                    yarn pack-win-sastScan${{ inputs.legacy && '-legacy' || '' }}
+                    yarn pack-win-irify${{ inputs.legacy && '-legacy' || '' }}
                   elif [ "${{ inputs.version }}" = "see" ]; then
-                    yarn pack-win-sastScan-ee${{ inputs.legacy && '-legacy' || '' }}
+                    yarn pack-win-irify-ee${{ inputs.legacy && '-legacy' || '' }}
                   else
                     echo "未知的输入值: ${{ inputs.version }}" >&2
                     exit 1
@@ -270,8 +270,8 @@ jobs:
                   # EnpriTraceAgent    -1.3.4-sp6-darwin-arm64(.dmg|.exe|.AppImage)
                   # EnpriTrace         -1.3.4-sp6-darwin-arm64(.dmg|.exe|.AppImage)
                   # Yakit              -1.3.4-sp6-darwin-arm64(.dmg|.exe|.AppImage)
-                  # SastScan           -1.3.4-sp6-darwin-arm64(.dmg|.exe|.AppImage)
-                  # SastScanEnterprise -1.3.4-sp6-darwin-arm64(.dmg|.exe|.AppImage)
+                  # IRify           -1.3.4-sp6-darwin-arm64(.dmg|.exe|.AppImage)
+                  # IRifyEnterprise -1.3.4-sp6-darwin-arm64(.dmg|.exe|.AppImage)
 
             - name: Generate software prefix name
               run: |
@@ -282,9 +282,9 @@ jobs:
                   elif [ "${{ inputs.version }}" = "se" ]; then
                     echo "ENV_Software_Name=EnpriTraceAgent" >> $GITHUB_ENV
                   elif [ "${{ inputs.version }}" = "sce" ]; then
-                    echo "ENV_Software_Name=SastScan" >> $GITHUB_ENV
+                    echo "ENV_Software_Name=IRify" >> $GITHUB_ENV
                   elif [ "${{ inputs.version }}" = "see" ]; then
-                    echo "ENV_Software_Name=SastScanEnterprise" >> $GITHUB_ENV
+                    echo "ENV_Software_Name=IRifyEnterprise" >> $GITHUB_ENV
                   else
                     echo "No software version obtained" >&2
                     exit 1
