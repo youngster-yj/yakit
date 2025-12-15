@@ -1,11 +1,9 @@
 name: Build Multi-IRify-Platform Prod
 
 on:
-    workflow_dispatch:
-      inputs:
-        tag:
-          description: "选择要构建的 tag"
-          required: true
+    push:
+        tags:
+            - "v*-irify"
 
 jobs:
     build_yakit:
