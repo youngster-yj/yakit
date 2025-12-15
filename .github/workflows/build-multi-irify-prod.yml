@@ -12,7 +12,7 @@ jobs:
     prepare_engine:
       runs-on: macos-15
     outputs:
-      engine_version: ${{ steps.ver.outputs.version }}
+      engine_version: ${{ steps.engine_ver.outputs.version }}
     steps:
       - uses: actions/checkout@v4
 
