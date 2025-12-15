@@ -11,86 +11,93 @@ jobs:
   # =====================================================
     prepare_engine:
       runs-on: macos-15
-    outputs:
-      engine_version: ${{ steps.engine_ver.outputs.version }}
-    steps:
-      - uses: actions/checkout@v4
 
-      - name: Fetch Latest Engine Version And Set To Env
-        id: engine_ver
-        run: |
+      outputs:
+        engine_version: ${{ steps.engine_ver.outputs.version }}
+      steps:
+        - uses: actions/checkout@v4
+
+        - name: Fetch Latest Engine Version And Set To Env
+          id: engine_ver
+          run: |
+            mkdir -p bins
             wget -O bins/engine-version.txt https://yaklang.oss-accelerate.aliyuncs.com/yak/latest/version.txt
             cat bins/engine-version.txt
             YAK_VERSION=$(cat bins/engine-version.txt | tr -d '\n')
+            # 给 shell 用（wget / script）
             echo "ENGINE_VERSION=$YAK_VERSION" >> $GITHUB_ENV
+            # 给 cache / job outputs 用（关键）
+            echo "version=$YAK_VERSION" >> $GITHUB_OUTPUT
+        # ENGINE_VERSION给shell 用（wget / script）
+        # version给cache / job outputs 用（关键）
 
-      - name: Restore Yak Engine Cache
-        uses: actions/cache@v4
-        with:
-          path: bins
-          key: macos-yak-engine-${{ steps.engine_ver.outputs.version }}
+        - name: Restore Yak Engine Cache
+          uses: actions/cache@v4
+          with:
+            path: bins
+            key: macos-yak-engine-${{ steps.engine_ver.outputs.version }}
 
       # ---------- Linux ----------
-      - name: Download Yak Engine (Linux)
-        run: |
-          if [ ! -f bins/yak_linux_amd64.zip ]; then
-            wget -O bins/yak_linux_amd64 https://yaklang.oss-accelerate.aliyuncs.com/yak/${ENGINE_VERSION}/yak_linux_amd64
-            zip bins/yak_linux_amd64.zip bins/yak_linux_amd64
-            rm bins/yak_linux_amd64
-          fi
+        - name: Download Yak Engine (Linux)
+          run: |
+            if [ ! -f bins/yak_linux_amd64.zip ]; then
+              wget -O bins/yak_linux_amd64 https://yaklang.oss-accelerate.aliyuncs.com/yak/${ENGINE_VERSION}/yak_linux_amd64
+              zip bins/yak_linux_amd64.zip bins/yak_linux_amd64
+              rm bins/yak_linux_amd64
+            fi
 
-      - name: Download Yak Engine (Linux-arm64)
-        run: |
-          if [ ! -f bins/yak_linux_arm64.zip ]; then
-            wget -O bins/yak_linux_arm64 https://yaklang.oss-accelerate.aliyuncs.com/yak/${ENGINE_VERSION}/yak_linux_arm64
-            zip bins/yak_linux_arm64.zip bins/yak_linux_arm64
-            rm bins/yak_linux_arm64
-          fi
+        - name: Download Yak Engine (Linux-arm64)
+          run: |
+            if [ ! -f bins/yak_linux_arm64.zip ]; then
+              wget -O bins/yak_linux_arm64 https://yaklang.oss-accelerate.aliyuncs.com/yak/${ENGINE_VERSION}/yak_linux_arm64
+              zip bins/yak_linux_arm64.zip bins/yak_linux_arm64
+              rm bins/yak_linux_arm64
+            fi
 
-      # ---------- Windows ----------
-      - name: Download Yak Engine (Windows)
-        run: |
-          if [ ! -f bins/yak_windows_normal_amd64.zip ]; then
-            wget -O bins/yak_windows_amd64.exe https://yaklang.oss-accelerate.aliyuncs.com/yak/${ENGINE_VERSION}/yak_windows_amd64.exe
-            zip bins/yak_windows_normal_amd64.zip bins/yak_windows_amd64.exe
-            rm bins/yak_windows_amd64.exe
-          fi
+        # ---------- Windows ----------
+        - name: Download Yak Engine (Windows)
+          run: |
+            if [ ! -f bins/yak_windows_normal_amd64.zip ]; then
+              wget -O bins/yak_windows_amd64.exe https://yaklang.oss-accelerate.aliyuncs.com/yak/${ENGINE_VERSION}/yak_windows_amd64.exe
+              zip bins/yak_windows_normal_amd64.zip bins/yak_windows_amd64.exe
+              rm bins/yak_windows_amd64.exe
+            fi
 
-      - name: Download Yak Legacy Engine (Windows)
-        run: |
-          if [ ! -f bins/yak_windows_legacy_amd64.zip ]; then
-            wget -O bins/yak_windows_amd64.exe https://yaklang.oss-accelerate.aliyuncs.com/yak/${ENGINE_VERSION}/yak_windows_legacy_amd64.exe
-            zip bins/yak_windows_legacy_amd64.zip bins/yak_windows_amd64.exe
-            rm bins/yak_windows_amd64.exe
-          fi
+        - name: Download Yak Legacy Engine (Windows)
+          run: |
+            if [ ! -f bins/yak_windows_legacy_amd64.zip ]; then
+              wget -O bins/yak_windows_amd64.exe https://yaklang.oss-accelerate.aliyuncs.com/yak/${ENGINE_VERSION}/yak_windows_legacy_amd64.exe
+              zip bins/yak_windows_legacy_amd64.zip bins/yak_windows_amd64.exe
+              rm bins/yak_windows_amd64.exe
+            fi
 
       # ---------- macOS ----------
-      - name: Download Yak Engine (macOS)
-        run: |
-          if [ ! -f bins/yak_darwin_amd64 ]; then
-            wget -O bins/yak_darwin_amd64 https://yaklang.oss-accelerate.aliyuncs.com/yak/${ENGINE_VERSION}/yak_darwin_amd64
-          fi
+        - name: Download Yak Engine (macOS)
+          run: |
+            if [ ! -f bins/yak_darwin_amd64 ]; then
+              wget -O bins/yak_darwin_amd64 https://yaklang.oss-accelerate.aliyuncs.com/yak/${ENGINE_VERSION}/yak_darwin_amd64
+            fi
 
-      - name: Download Yak Engine (macOS-arm64)
-        run: |
-          if [ ! -f bins/yak_darwin_arm64 ]; then
-            wget -O bins/yak_darwin_arm64 https://yaklang.oss-accelerate.aliyuncs.com/yak/${ENGINE_VERSION}/yak_darwin_arm64
-          fi
+        - name: Download Yak Engine (macOS-arm64)
+          run: |
+            if [ ! -f bins/yak_darwin_arm64 ]; then
+              wget -O bins/yak_darwin_arm64 https://yaklang.oss-accelerate.aliyuncs.com/yak/${ENGINE_VERSION}/yak_darwin_arm64
+            fi
 
-      - name: Signature Mac Engine
-        run: chmod +x ./packageScript/script/signature.sh && ./packageScript/script/signature.sh
+        - name: Signature Mac Engine
+          run: chmod +x ./packageScript/script/signature.sh && ./packageScript/script/signature.sh
 
-      - name: Fetch macOS sha256
-        run: |
-          wget -O bins/yak_darwin_amd64.sha256.txt https://yaklang.oss-accelerate.aliyuncs.com/yak/${ENGINE_VERSION}/yak_darwin_amd64.sha256.txt
-          wget -O bins/yak_darwin_arm64.sha256.txt https://yaklang.oss-accelerate.aliyuncs.com/yak/${ENGINE_VERSION}/yak_darwin_arm64.sha256.txt
+        - name: Fetch macOS sha256
+          run: |
+            wget -O bins/yak_darwin_amd64.sha256.txt https://yaklang.oss-accelerate.aliyuncs.com/yak/${ENGINE_VERSION}/yak_darwin_amd64.sha256.txt
+            wget -O bins/yak_darwin_arm64.sha256.txt https://yaklang.oss-accelerate.aliyuncs.com/yak/${ENGINE_VERSION}/yak_darwin_arm64.sha256.txt
 
-      - name: Upload Yak Engine Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: yak-engine
-          path: bins
-          retention-days: 1
+        - name: Upload Yak Engine Artifact
+          uses: actions/upload-artifact@v4
+          with:
+            name: yak-engine
+            path: bins
+            retention-days: 1
 
   # =====================================================
   # 2️⃣ Matrix 构建（并行）
