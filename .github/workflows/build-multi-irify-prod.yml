@@ -62,6 +62,14 @@ jobs:
                   YAK_VERSION=$(cat bins/engine-version.txt | tr -d '\n')
                   echo "ENGINE_VERSION=$YAK_VERSION" >> $GITHUB_ENV
 
+            - name: Cache Yak Engine & bins
+              uses: actions/cache@v4
+              with:
+                path: bins
+                key: ${{ runner.os }}-yak-engine-${{ env.ENGINE_VERSION }}
+                restore-keys: |
+                  ${{ runner.os }}-yak-engine-
+
             - name: "Download Yak Engine via wget(Linux)"
               id: download-linux-engine
               run: wget -O bins/yak_linux_amd64 https://yaklang.oss-accelerate.aliyuncs.com/yak/${ENGINE_VERSION}/yak_linux_amd64 && zip ./bins/yak_linux_amd64.zip ./bins/yak_linux_amd64 && rm ./bins/yak_linux_amd64
