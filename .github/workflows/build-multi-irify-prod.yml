@@ -1,13 +1,19 @@
 name: Build Multi-IRify-Platform Prod
 
 on:
-    push:
-        tags:
-            - "v*-irify"
+    workflow_dispatch:
+      inputs:
+        tag:
+          description: "选择要构建的 tag"
+          required: true
 
 jobs:
     build_yakit:
         runs-on: macos-15
+        strategy:
+          fail-fast: false
+          matrix:
+            version: [irify, irifyee]
         env:
             CI: ""
             NODE_OPTIONS: --max_old_space_size=4096
@@ -100,11 +106,11 @@ jobs:
               run: chmod +x ./packageScript/script/buildPreScript.sh && ./packageScript/script/buildPreScript.sh irify
               shell: bash
 
-            - name: Build IRify Normal And Legacy (MultiPlatform)
+            - name: Build ${{ matrix.version }} Normal And Legacy (MultiPlatform)
               env:
                   GH_TOKEN: ${{ secrets.GH_TOKEN }}
               working-directory: ./
-              run: ./packageScript/script/electron-irify-builder.sh irify || { exit 1; }
+              run: ./packageScript/script/electron-irify-builder.sh ${{ matrix.version }} || { exit 1; }
               shell: bash
 
             - name: View Published Content
@@ -112,42 +118,22 @@ jobs:
                   ls ./release
                   # Yakit            -1.3.4-sp6-darwin-arm64(.dmg|.exe|.AppImage)
 
-            - name: Check IRify if the output is correct
-              run: (./packageScript/script/check-build-package.sh IRify) || { exit 1; }
+            - name: Check build output
+              run: |
+                if [ "${{ matrix.version }}" = "irify" ]; then
+                  ./packageScript/script/check-build-package.sh IRify
+                else
+                  ./packageScript/script/check-build-package.sh IRifyEnpriTrace
+                fi
               shell: bash
-            - name: Upload IRify(CE) Artifacts
+
+            - name: Upload ${{ matrix.version }} Artifacts
               uses: actions/upload-artifact@v4
               with:
-                  name: IRify-artifacts
-                  path: |
-                      ./release/IRify-${{ env.ENV_TAG }}-*.exe
-                      ./release/IRify-${{ env.ENV_TAG }}-*.dmg
-                      ./release/IRify-${{ env.ENV_TAG }}-*.AppImage
-                  if-no-files-found: error
-                  retention-days: 1
-
-            - name: Build EnpriTrace Normal And Legacy (MultiPlatform)
-              env:
-                  GH_TOKEN: ${{ secrets.GH_TOKEN }}
-              working-directory: ./
-              run: ./packageScript/script/electron-irify-builder.sh irifyee || { exit 1; }
-              shell: bash
-
-            - name: View Published Content
-              run:
-                  ls ./release
-                  # EnpriTrace       -1.3.4-sp6-darwin-arm64(.dmg|.exe|.AppImage)
-
-            - name: Check IRifyEnpriTrace if the output is correct
-              run: (./packageScript/script/check-build-package.sh IRifyEnpriTrace) || { exit 1; }
-              shell: bash
-            - name: Upload IRify(EE) Artifacts
-              uses: actions/upload-artifact@v4
-              with:
-                  name: IRifyEnpriTrace-artifacts
-                  path: |
-                      ./release/IRifyEnpriTrace-${{ env.ENV_TAG }}-*.exe
-                      ./release/IRifyEnpriTrace-${{ env.ENV_TAG }}-*.dmg
-                      ./release/IRifyEnpriTrace-${{ env.ENV_TAG }}-*.AppImage
-                  if-no-files-found: error
-                  retention-days: 1
+                name: ${{ matrix.version }}-artifacts
+                path: |
+                  ./release/*-${{ env.ENV_TAG }}-*.exe
+                  ./release/*-${{ env.ENV_TAG }}-*.dmg
+                  ./release/*-${{ env.ENV_TAG }}-*.AppImage
+                if-no-files-found: error
+                retention-days: 1
