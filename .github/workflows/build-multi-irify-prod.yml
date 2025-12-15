@@ -11,10 +11,11 @@ jobs:
         strategy:
           fail-fast: false
           matrix:
-            - version: irify
-              artifact_name: IRify
-            - version: irifyee
-              artifact_name: IRifyEnpriTrace
+            include:
+              - version: irify
+                artifact_name: IRify
+              - version: irifyee
+                artifact_name: IRifyEnpriTrace
         env:
             CI: ""
             NODE_OPTIONS: --max_old_space_size=4096
