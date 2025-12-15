@@ -11,7 +11,10 @@ jobs:
         strategy:
           fail-fast: false
           matrix:
-            version: [irify, irifyee]
+            - version: irify
+              artifact_name: IRify
+            - version: irifyee
+              artifact_name: IRifyEnpriTrace
         env:
             CI: ""
             NODE_OPTIONS: --max_old_space_size=4096
@@ -104,7 +107,7 @@ jobs:
               run: chmod +x ./packageScript/script/buildPreScript.sh && ./packageScript/script/buildPreScript.sh irify
               shell: bash
 
-            - name: Build ${{ matrix.version }} Normal And Legacy (MultiPlatform)
+            - name: Build ${{ matrix.artifact_name }} Normal And Legacy (MultiPlatform)
               env:
                   GH_TOKEN: ${{ secrets.GH_TOKEN }}
               working-directory: ./
@@ -125,10 +128,10 @@ jobs:
                 fi
               shell: bash
 
-            - name: Upload ${{ matrix.version }} Artifacts
+            - name: Upload ${{ matrix.artifact_name }} Artifacts
               uses: actions/upload-artifact@v4
               with:
-                name: ${{ matrix.version }}-artifacts
+                name: ${{ matrix.artifact_name }}-artifacts
                 path: |
                   ./release/*-${{ env.ENV_TAG }}-*.exe
                   ./release/*-${{ env.ENV_TAG }}-*.dmg
