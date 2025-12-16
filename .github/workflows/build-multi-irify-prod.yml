@@ -6,9 +6,6 @@ on:
             - "v*-irify"
 
 jobs:
-  # =====================================================
-  # 1️⃣ 准备 Engine（只跑一次）
-  # =====================================================
     prepare_engine:
       runs-on: macos-15
 
@@ -17,6 +14,16 @@ jobs:
       steps:
         - uses: actions/checkout@v4
 
+        - name: Check if the version number is correct
+          run: |
+            VERSION_INPUT=$GITHUB_REF_NAME
+            if [[ $VERSION_INPUT != v*-irify ]]; then
+              echo "Error: Version must start with 'v' and end with '-irify'." >&2
+              exit 1
+            else
+              echo "Version starts with 'v': $VERSION_INPUT"
+            fi
+
         - name: Fetch Latest Engine Version And Set To Env
           id: engine_ver
           run: |
@@ -24,12 +31,10 @@ jobs:
             wget -O bins/engine-version.txt https://yaklang.oss-accelerate.aliyuncs.com/yak/latest/version.txt
             cat bins/engine-version.txt
             YAK_VERSION=$(cat bins/engine-version.txt | tr -d '\n')
-            # 给 shell 用（wget / script）
             echo "ENGINE_VERSION=$YAK_VERSION" >> $GITHUB_ENV
-            # 给 cache / job outputs 用（关键）
             echo "version=$YAK_VERSION" >> $GITHUB_OUTPUT
-        # ENGINE_VERSION给shell 用（wget / script）
-        # version给cache / job outputs 用（关键）
+        # ENGINE_VERSION 给shell 用(wget / script)
+        # version 给cache / job outputs 用(关键)
 
         - name: Restore Yak Engine Cache
           uses: actions/cache@v4
@@ -99,9 +104,6 @@ jobs:
             path: bins
             retention-days: 1
 
-  # =====================================================
-  # 2️⃣ Matrix 构建（并行）
-  # =====================================================
     build_yakit:
         needs: prepare_engine
         runs-on: macos-15
@@ -124,16 +126,6 @@ jobs:
             CERT_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
 
         steps:
-            - name: Check if the version number is correct
-              run: |
-                  VERSION_INPUT=$GITHUB_REF_NAME
-                  if [[ $VERSION_INPUT != v*-irify ]]; then
-                    echo "Error: Version must start with 'v' and end with '-irify'." >&2
-                    exit 1
-                  else
-                    echo "Version starts with 'v': $VERSION_INPUT"
-                  fi
-
             - uses: actions/checkout@v4
             - uses: actions/setup-node@v4
               with:
@@ -206,3 +198,12 @@ jobs:
                   ./release/*-${{ env.ENV_TAG }}-*.AppImage
                 if-no-files-found: error
                 retention-days: 1
+
+    cleanup_engine_artifact:
+      needs: build_yakit
+      runs-on: ubuntu-latest
+      steps:
+        - name: Delete yak-engine artifact
+          uses: geekyeggo/delete-artifact@v5
+          with:
+            name: yak-engine
