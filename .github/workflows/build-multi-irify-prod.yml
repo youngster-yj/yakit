@@ -8,7 +8,13 @@ on:
 jobs:
     prepare_engine:
         runs-on: macos-15
-
+        env:
+            CI: ""
+            APPLE_ID: ${{ secrets.APPLE_ACCOUNT_EMAIL }}
+            TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+            APPLE_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+            CERT_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+            CERT_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
         outputs:
             engine_version: ${{ steps.engine_ver.outputs.version }}
         steps:
@@ -119,6 +125,7 @@ jobs:
             CI: ""
             NODE_OPTIONS: --max_old_space_size=4096
             ENGINE_VERSION: ${{ needs.prepare_engine.outputs.engine_version }}
+            GH_TOKEN: ${{ secrets.GH_TOKEN }}
             APPLE_ID: ${{ secrets.APPLE_ACCOUNT_EMAIL }}
             TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
             APPLE_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
@@ -150,6 +157,9 @@ jobs:
                   }
                   wget -O bins/scripts/google-chrome-plugin.zip https://yaklang.oss-accelerate.aliyuncs.com/chrome-extension/yakit-chrome-extension-v${extensionVersion}.zip
               shell: bash
+
+            - name: Signature Mac Engine
+              run: chmod +x ./packageScript/script/signature.sh && ./packageScript/script/signature.sh build
 
             - name: Echo IRify Package Version To Env
               run: |
@@ -203,58 +213,58 @@ jobs:
               with:
                   name: yak-engine
 
-    # publish_software_to_oss:
-    #     needs:
-    #         - build_yakit
-    #     strategy:
-    #         matrix:
-    #             artifact: [IRify, IRifyEnpriTrace] # 需要发布的软件名前缀
-    #     runs-on: ubuntu-latest
-    #     steps:
-    #         - name: Echo Package Version To Env
-    #           run: |
-    #               ENV_TAG=${{ github.ref_name }}
-    #               ENV_TAG=${ENV_TAG#v}
-    #               ENV_TAG=${ENV_TAG%-irify}
-    #               echo "ENV_TAG=$ENV_TAG" >> $GITHUB_ENV
+    publish_software_to_oss:
+        needs:
+            - build_yakit
+        strategy:
+            matrix:
+                artifact: [IRify, IRifyEnpriTrace] # 需要发布的软件名前缀
+        runs-on: ubuntu-latest
+        steps:
+            - name: Echo Package Version To Env
+              run: |
+                  ENV_TAG=${{ github.ref_name }}
+                  ENV_TAG=${ENV_TAG#v}
+                  ENV_TAG=${ENV_TAG%-irify}
+                  echo "ENV_TAG=$ENV_TAG" >> $GITHUB_ENV
 
-    #         - name: Download IRify And Legacy IRify
-    #           uses: actions/download-artifact@v4
-    #           with:
-    #               name: ${{ matrix.artifact }}-artifacts
-    #               merge-multiple: true
+            - name: Download IRify And Legacy IRify
+              uses: actions/download-artifact@v4
+              with:
+                  name: ${{ matrix.artifact }}-artifacts
+                  merge-multiple: true
 
-    #         - run: ls
-    #           name: Ls Published Artifacts...
+            - run: ls
+              name: Ls Published Artifacts...
 
-    #         - name: Create Release and Upload Assets
-    #           if: ${{ matrix.artifact == 'IRify' }}
-    #           uses: ncipollo/release-action@v1
-    #           with:
-    #               artifacts: ./*
-    #               token: ${{ secrets.GITHUB_TOKEN }}
-    #               name: Release ${{ github.ref_name }}
-    #               tag: ${{ github.ref_name }}
+            - name: Create Release and Upload Assets
+              if: ${{ matrix.artifact == 'IRify' }}
+              uses: ncipollo/release-action@v1
+              with:
+                  artifacts: ./*
+                  token: ${{ secrets.GITHUB_TOKEN }}
+                  name: Release ${{ github.ref_name }}
+                  tag: ${{ github.ref_name }}
 
-    #         - name: Generate OSS File Path
-    #           run: |
-    #               if [ "${{ matrix.artifact }}" = "IRify" ]; then
-    #                 echo "FILE_PATH=irify" >> $GITHUB_ENV
-    #               elif [ "${{ matrix.artifact }}" = "IRifyEnpriTrace" ]; then
-    #                 echo "FILE_PATH=svip" >> $GITHUB_ENV
-    #               else
-    #                 echo "No corresponding file path" >&2
-    #                 exit 1
-    #               fi
-    #         - name: Show ENV.FILE_PATH
-    #           run: echo "FILE_PATH： $FILE_PATH"
+            - name: Generate OSS File Path
+              run: |
+                  if [ "${{ matrix.artifact }}" = "IRify" ]; then
+                    echo "FILE_PATH=irify" >> $GITHUB_ENV
+                  elif [ "${{ matrix.artifact }}" = "IRifyEnpriTrace" ]; then
+                    echo "FILE_PATH=svip" >> $GITHUB_ENV
+                  else
+                    echo "No corresponding file path" >&2
+                    exit 1
+                  fi
+            - name: Show ENV.FILE_PATH
+              run: echo "FILE_PATH： $FILE_PATH"
 
-    #         - name: Upload IRify To OSS
-    #           uses: tvrcgo/upload-to-oss@master
-    #           with:
-    #               key-id: ${{ secrets.OSS_KEY_ID }}
-    #               key-secret: ${{ secrets.OSS_KEY_SECRET }}
-    #               region: oss-accelerate
-    #               bucket: yaklang
-    #               assets: |
-    #                   *:/${{ env.FILE_PATH }}/${{ env.ENV_TAG }}/
+            - name: Upload IRify To OSS
+              uses: tvrcgo/upload-to-oss@master
+              with:
+                  key-id: ${{ secrets.OSS_KEY_ID }}
+                  key-secret: ${{ secrets.OSS_KEY_SECRET }}
+                  region: oss-accelerate
+                  bucket: yaklang
+                  assets: |
+                      *:/${{ env.FILE_PATH }}/${{ env.ENV_TAG }}/
