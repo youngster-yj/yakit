@@ -91,6 +91,7 @@ jobs:
                   wget -O bins/yak_darwin_arm64 https://yaklang.oss-accelerate.aliyuncs.com/yak/${ENGINE_VERSION}/yak_darwin_arm64
 
             - name: Signature Mac Engine
+              if: steps.cache.outputs.cache-hit != 'true'
               run: chmod +x ./packageScript/script/signature.sh && ./packageScript/script/signature.sh
 
             - name: Fetch macOS sha256
