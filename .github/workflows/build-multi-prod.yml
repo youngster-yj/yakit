@@ -39,7 +39,7 @@ jobs:
               id: cache
               with:
                   path: bins
-                  key: yak-engine-${{ steps.engine_ver.outputs.version }}
+                  key: yak-engine-${{ runner.os }}-${{ steps.engine_ver.outputs.version }}
 
         # ---------- Linux ----------
             - name: Download Yak Engine (Linux)
